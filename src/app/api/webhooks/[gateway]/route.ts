@@ -24,9 +24,12 @@ export async function POST(
     return NextResponse.json({ error: "unknown gateway" }, { status: 404 });
   }
 
-  const expectedToken = process.env.WEBHOOK_TOKEN;
   const token = request.nextUrl.searchParams.get("token");
-  if (expectedToken && token !== expectedToken) {
+  if (!token) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const producer = await prisma.producer.findUnique({ where: { webhookToken: token } });
+  if (!producer) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -57,7 +60,11 @@ export async function POST(
 
   const existing = await prisma.lead.findUnique({
     where: {
-      gateway_externalId: { gateway: dbGateway, externalId: normalized.externalId },
+      producerId_gateway_externalId: {
+        producerId: producer.id,
+        gateway: dbGateway,
+        externalId: normalized.externalId,
+      },
     },
   });
 
@@ -72,6 +79,7 @@ export async function POST(
     const updated = await prisma.lead.update({
       where: { id: existing.id },
       data: {
+        producerId: producer.id,
         customerName: normalized.customerName,
         phone,
         email: normalized.email,
@@ -89,6 +97,7 @@ export async function POST(
     data: {
       gateway: dbGateway,
       externalId: normalized.externalId,
+      producerId: producer.id,
       customerName: normalized.customerName,
       phone,
       email: normalized.email,

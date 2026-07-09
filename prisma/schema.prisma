@@ -68,10 +68,36 @@ model DistributionRule {
   @@map("distribution_rules")
 }
 
+model Producer {
+  id           String   @id @default(cuid())
+  name         String
+  webhookToken String   @unique
+  createdAt    DateTime @default(now())
+
+  products Product[]
+  leads    Lead[]
+
+  @@map("producers")
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  name       String
+  producerId String
+  producer   Producer @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([producerId])
+  @@map("products")
+}
+
 model Lead {
   id                 String        @id @default(cuid())
   gateway            Gateway
   externalId         String
+  producerId         String?
+  producer           Producer?     @relation(fields: [producerId], references: [id])
   customerName       String
   phone              String
   email              String?
@@ -88,7 +114,7 @@ model Lead {
 
   events LeadEvent[]
 
-  @@unique([gateway, externalId])
+  @@unique([producerId, gateway, externalId])
   @@index([createdAt])
   @@index([serviceStatus])
   @@index([assignedOperatorId])

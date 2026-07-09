@@ -108,6 +108,7 @@ export default async function DashboardPage() {
             <thead>
               <tr className="text-xs text-neutral-500">
                 <th className="pb-2">Cliente</th>
+                <th className="pb-2">Produtor</th>
                 <th className="pb-2">Gateway</th>
                 <th className="pb-2">Produto</th>
                 <th className="pb-2">Pagamento</th>
@@ -120,6 +121,9 @@ export default async function DashboardPage() {
               {leads.map((lead) => (
                 <tr key={lead.id} className="border-t border-neutral-800">
                   <td className="py-2">{lead.customerName}</td>
+                  <td className="py-2 text-neutral-400">
+                    {lead.producer?.name ?? "-"}
+                  </td>
                   <td className="py-2 text-neutral-400">{lead.gateway}</td>
                   <td className="py-2 text-neutral-400">{lead.product ?? "-"}</td>
                   <td className="py-2">{paymentBadge(lead.paymentStatus)}</td>
@@ -134,7 +138,7 @@ export default async function DashboardPage() {
               ))}
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-4 text-center text-neutral-500">
+                  <td colSpan={8} className="py-4 text-center text-neutral-500">
                     Nenhum lead recebido hoje ainda.
                   </td>
                 </tr>

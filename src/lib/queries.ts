@@ -50,7 +50,10 @@ export async function getDashboardData() {
       }),
       prisma.lead.findMany({
         where: { createdAt: { gte: todayStart } },
-        include: { assignedOperator: { select: { name: true } } },
+        include: {
+          assignedOperator: { select: { name: true } },
+          producer: { select: { name: true } },
+        },
         orderBy: { createdAt: "desc" },
         take: 50,
       }),
