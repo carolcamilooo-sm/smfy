@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+enum OperatorStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum Gateway {
+  KIWIFY
+  PERFECTPAY
+  DISRUPTY
+  SMPAY
+}
+
+enum PaymentStatus {
+  APPROVED
+  PENDING
+  OTHER
+}
+
+enum ServiceStatus {
+  WAITING
+  ASSIGNED
+  ATTENDED
+}
+
+enum LeadEventAction {
+  ASSIGNED
+  ATTENDED
+}
+
+model User {
+  id             String           @id @default(cuid())
+  name           String
+  email          String           @unique
+  passwordHash   String
+  role           Role             @default(OPERATOR)
+  status         OperatorStatus   @default(OFFLINE)
+  lastActivityAt DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+
+  distributionRule DistributionRule?
+  assignedLeads     Lead[]          @relation("AssignedLeads")
+  leadEvents        LeadEvent[]
+
+  @@map("users")
+}
+
+model DistributionRule {
+  id         String  @id @default(cuid())
+  operatorId String  @unique
+  operator   User    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  weight     Int     @default(1)
+  active     Boolean @default(true)
+
+  @@map("distribution_rules")
+}
+
+model Lead {
+  id                 String        @id @default(cuid())
+  gateway            Gateway
+  externalId         String
+  customerName       String
+  phone              String
+  email              String?
+  product             String?
+  value               Decimal?      @db.Decimal(10, 2)
+  paymentStatus       PaymentStatus
+  serviceStatus       ServiceStatus @default(WAITING)
+  assignedOperatorId  String?
+  assignedOperator    User?         @relation("AssignedLeads", fields: [assignedOperatorId], references: [id])
+  assignedAt          DateTime?
+  attendedAt          DateTime?
+  rawPayload          Json
+  createdAt           DateTime      @default(now())
+
+  events LeadEvent[]
+
+  @@unique([gateway, externalId])
+  @@index([createdAt])
+  @@index([serviceStatus])
+  @@index([assignedOperatorId])
+  @@map("leads")
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("message_templates")
+}
+
+model LeadEvent {
+  id         String           @id @default(cuid())
+  leadId     String
+  lead       Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  operatorId String
+  operator   User             @relation(fields: [operatorId], references: [id])
+  action     LeadEventAction
+  createdAt  DateTime         @default(now())
+
+  @@index([operatorId, createdAt])
+  @@map("lead_events")
+}
