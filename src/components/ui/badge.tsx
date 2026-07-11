@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils";
 type Tone = "green" | "yellow" | "gray" | "blue" | "red";
 
 const toneClasses: Record<Tone, string> = {
-  green: "bg-emerald-500/15 text-emerald-400",
-  yellow: "bg-amber-500/15 text-amber-400",
-  gray: "bg-neutral-500/15 text-neutral-400",
-  blue: "bg-sky-500/15 text-sky-400",
-  red: "bg-red-500/15 text-red-400",
+  green: "bg-success/15 text-success",
+  yellow: "bg-warning/15 text-warning",
+  gray: "bg-muted/15 text-muted",
+  blue: "bg-accent/15 text-accent",
+  red: "bg-danger/15 text-danger",
 };
 
 export function Badge({

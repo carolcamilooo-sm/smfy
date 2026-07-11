@@ -18,13 +18,13 @@ export function CopyButton({ value, className }: { value: string; className?: st
       type="button"
       onClick={handleCopy}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold text-secondary hover:border-accent/50",
         className
       )}
     >
       {copied ? (
         <>
-          <Check size={14} className="text-emerald-400" /> Copiado
+          <Check size={14} className="text-success" /> Copiado
         </>
       ) : (
         <>
