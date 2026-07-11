@@ -25,6 +25,8 @@ function mapStatus(orderStatus: string | undefined): NormalizedPaymentStatus {
     case "pix_created":
     case "billet_created":
       return "PENDING";
+    case "refused":
+      return "DECLINED";
     default:
       return "OTHER";
   }

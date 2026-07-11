@@ -13,6 +13,8 @@ export async function POST(
   }
 
   const { id } = await context.params;
+  const body = await request.json().catch(() => ({}));
+  const templateId = typeof body.templateId === "string" ? body.templateId : undefined;
 
   const lead = await prisma.lead.findUnique({ where: { id } });
   if (!lead || lead.assignedOperatorId !== session.user.id) {
@@ -22,7 +24,11 @@ export async function POST(
   const [updated] = await prisma.$transaction([
     prisma.lead.update({
       where: { id },
-      data: { serviceStatus: "ATTENDED", attendedAt: new Date() },
+      data: {
+        serviceStatus: "ATTENDED",
+        attendedAt: new Date(),
+        usedTemplateId: templateId,
+      },
     }),
     prisma.leadEvent.create({
       data: { leadId: id, operatorId: session.user.id, action: "ATTENDED" },

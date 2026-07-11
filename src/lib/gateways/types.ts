@@ -1,4 +1,4 @@
-export type NormalizedPaymentStatus = "APPROVED" | "PENDING" | "OTHER";
+export type NormalizedPaymentStatus = "APPROVED" | "PENDING" | "DECLINED" | "OTHER";
 
 export type NormalizedLead = {
   externalId: string;

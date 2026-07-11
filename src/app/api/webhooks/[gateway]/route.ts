@@ -7,7 +7,7 @@ import { normalizePhone } from "@/lib/phone";
 import type { Lead } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
-function serializeLead(lead: Lead) {
+function serializeLead<T extends Lead>(lead: T) {
   return {
     ...lead,
     value: lead.value ? Number(lead.value) : null,

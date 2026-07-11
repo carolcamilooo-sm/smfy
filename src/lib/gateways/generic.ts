@@ -27,11 +27,13 @@ function firstDefined(obj: unknown, paths: string[]): unknown {
 
 const APPROVED_WORDS = ["paid", "approved", "aprovado", "pago", "completed", "success"];
 const PENDING_WORDS = ["pending", "pendente", "waiting", "aguardando", "processing", "created"];
+const DECLINED_WORDS = ["declined", "recusado", "recusada", "refused", "failed"];
 
 function mapStatus(raw: unknown): NormalizedPaymentStatus {
   const status = String(raw ?? "").toLowerCase();
   if (APPROVED_WORDS.some((w) => status.includes(w))) return "APPROVED";
   if (PENDING_WORDS.some((w) => status.includes(w))) return "PENDING";
+  if (DECLINED_WORDS.some((w) => status.includes(w))) return "DECLINED";
   return "OTHER";
 }
 
