@@ -3,8 +3,16 @@
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { MascotCluster } from "./mascots";
+import { Logo } from "@/components/logo";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  pending_approval:
+    "Seu cadastro ainda está aguardando aprovação do administrador.",
+  rejected: "Seu cadastro foi recusado. Fale com o administrador.",
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +36,9 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("E-mail ou senha inválidos.");
+      setError(
+        ERROR_MESSAGES[result.code ?? ""] ?? "E-mail ou senha inválidos."
+      );
       return;
     }
 
@@ -37,9 +47,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-black">
+    <div className="flex min-h-screen bg-app">
       {/* Left: brand panel */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-black p-10 lg:flex">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-app p-10 lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{
@@ -49,35 +59,32 @@ export default function LoginPage() {
           }}
         />
 
-        <div className="relative z-10 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-sm font-bold text-black">
-            s
-          </div>
-          <span className="text-lg font-semibold text-white">smfy</span>
+        <div className="relative z-10">
+          <Logo className="text-2xl" />
         </div>
 
         <div className="relative z-10 pb-10">
           <MascotCluster />
         </div>
 
-        <div className="relative z-10 flex gap-4 text-xs text-neutral-500">
+        <div className="relative z-10 flex gap-4 text-xs text-muted">
           <span>smfy.io</span>
         </div>
       </div>
 
       {/* Right: form panel */}
-      <div className="flex w-full flex-col items-center justify-center bg-neutral-950 px-6 py-12 lg:w-1/2">
+      <div className="flex w-full flex-col items-center justify-center bg-app px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-sm">
-          <div className="mb-8 inline-flex rounded-full border border-neutral-800 bg-neutral-900 p-1 text-sm">
-            <span className="rounded-full bg-white px-4 py-1.5 font-medium text-black">
+          <div className="mb-8 inline-flex rounded-full border border-border bg-surface p-1 text-sm">
+            <span className="rounded-full bg-accent px-4 py-1.5 font-medium text-app">
               Entrar
             </span>
           </div>
 
-          <h1 className="text-2xl font-semibold text-white">
-            Bem-vindo <span className="text-brand">de volta.</span>
+          <h1 className="text-2xl font-semibold text-primary">
+            Bem-vindo <span className="text-accent">de volta.</span>
           </h1>
-          <p className="mt-1 text-sm text-neutral-400">
+          <p className="mt-1 text-sm text-secondary">
             Acesse seu hub de recuperação de vendas.
           </p>
 
@@ -85,7 +92,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="email"
-                className="mb-1.5 block text-xs font-medium tracking-wide text-neutral-400"
+                className="mb-1.5 block text-xs font-medium tracking-wide text-secondary"
               >
                 EMAIL
               </label>
@@ -97,14 +104,14 @@ export default function LoginPage() {
                 placeholder="seu@email.com"
                 required
                 autoFocus
-                className="w-full rounded-lg border border-neutral-800 bg-black px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:border-brand focus:outline-none"
+                className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="mb-1.5 block text-xs font-medium tracking-wide text-neutral-400"
+                className="mb-1.5 block text-xs font-medium tracking-wide text-secondary"
               >
                 SENHA
               </label>
@@ -115,32 +122,39 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-neutral-800 bg-black px-4 py-3 pr-11 text-sm text-white focus:border-brand focus:outline-none"
+                  className="w-full rounded-lg border border-border bg-surface px-4 py-3 pr-11 text-sm text-primary focus:border-accent focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   tabIndex={-1}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <p className="mt-2 text-right text-xs text-neutral-500">
+              <p className="mt-2 text-right text-xs text-muted">
                 Esqueceu a senha? Fale com o administrador.
               </p>
             </div>
 
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-danger">{error}</p>}
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-app transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Entrando..." : "Entrar"}
               {!loading && <span aria-hidden>→</span>}
             </button>
+
+            <p className="text-center text-xs text-muted">
+              Ainda não tem conta?{" "}
+              <Link href="/cadastro" className="text-accent hover:underline">
+                Cadastre-se
+              </Link>
+            </p>
           </form>
         </div>
       </div>
