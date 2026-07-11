@@ -3,7 +3,7 @@
 import { useActionState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { changePassword, type ActionState } from "./actions";
+import { changePassword, type ActionState } from "@/lib/account-actions";
 
 const initialState: ActionState = {};
 
@@ -18,21 +18,21 @@ export function PasswordForm() {
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
       <div>
-        <label className="mb-1 block text-xs text-neutral-400">Senha atual</label>
+        <label className="mb-1 block text-xs text-secondary">Senha atual</label>
         <Input name="currentPassword" type="password" required />
       </div>
       <div>
-        <label className="mb-1 block text-xs text-neutral-400">Nova senha</label>
+        <label className="mb-1 block text-xs text-secondary">Nova senha</label>
         <Input name="newPassword" type="password" minLength={6} required />
       </div>
       <div>
-        <label className="mb-1 block text-xs text-neutral-400">
+        <label className="mb-1 block text-xs text-secondary">
           Confirmar nova senha
         </label>
         <Input name="confirmPassword" type="password" minLength={6} required />
       </div>
-      {state.error && <p className="text-sm text-red-400">{state.error}</p>}
-      {state.success && <p className="text-sm text-emerald-400">{state.success}</p>}
+      {state.error && <p className="text-sm text-danger">{state.error}</p>}
+      {state.success && <p className="text-sm text-success">{state.success}</p>}
       <Button type="submit" disabled={pending}>
         {pending ? "Alterando..." : "Alterar senha"}
       </Button>

@@ -33,11 +33,11 @@ export default function IntegracoesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="mb-1 text-lg font-semibold">Integrações</h1>
-        <p className="text-xs text-neutral-500">
-          Gateways de pagamento suportados. O link de webhook de cada um é
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Integrações</h1>
+        <p className="text-sm text-secondary">
+          Gateways de pagamento conectados via webhook. O link de cada um é
           gerado por produtor —{" "}
-          <Link href="/dashboard/produtores" className="text-brand underline">
+          <Link href="/dashboard/produtores" className="text-accent hover:underline">
             cadastre o produtor
           </Link>{" "}
           para pegar a URL certa.
@@ -47,15 +47,15 @@ export default function IntegracoesPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         {GATEWAYS.map((gw) => (
           <Card key={gw.name}>
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="font-medium">{gw.name}</h3>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-bold text-primary">{gw.name}</h3>
               {gw.status === "complete" ? (
                 <Badge tone="green">Parser completo</Badge>
               ) : (
                 <Badge tone="yellow">Parser genérico</Badge>
               )}
             </div>
-            <p className="text-xs text-neutral-400">{gw.description}</p>
+            <p className="text-xs leading-relaxed text-secondary">{gw.description}</p>
           </Card>
         ))}
       </div>
