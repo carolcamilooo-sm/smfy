@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +16,11 @@ type QueueLead = {
   customerName: string;
   phone: string;
   product: string | null;
+  producer: { name: string } | null;
   value: number | null;
   gateway: string;
   paymentStatus: string;
+  assignedAt: string | Date | null;
 };
 
 type Template = {
@@ -26,35 +29,49 @@ type Template = {
   content: string;
 };
 
-const HEARTBEAT_INTERVAL_MS = 60 * 1000;
+function paymentTypeBadge(status: string) {
+  if (status === "APPROVED") return <Badge tone="green">Pago</Badge>;
+  if (status === "PENDING") return <Badge tone="yellow">Pendente</Badge>;
+  if (status === "DECLINED") return <Badge tone="red">Carrinho</Badge>;
+  return <Badge tone="gray">Outro</Badge>;
+}
+
+function formatWait(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}min ${String(s).padStart(2, "0")}s`;
+}
+
+function formatAvgResponse(seconds: number | null) {
+  if (seconds == null) return "—";
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}min ${String(seconds % 60).padStart(2, "0")}s`;
+}
 
 export function OperatorPanel({
   operatorId,
-  initialStatus,
   initialQueue,
   templates,
   attendedToday,
+  receivedToday,
+  avgFirstResponseSeconds,
 }: {
   operatorId: string;
-  initialStatus: "ONLINE" | "OFFLINE";
   initialQueue: QueueLead[];
   templates: Template[];
   attendedToday: number;
+  receivedToday: number;
+  avgFirstResponseSeconds: number | null;
 }) {
   const router = useRouter();
-  const [status, setStatus] = useState(initialStatus);
-  const [selectedTemplate, setSelectedTemplate] = useState<Record<string, string>>(
-    {}
-  );
+  const [selectedTemplate, setSelectedTemplate] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (status !== "ONLINE") return;
-    const id = setInterval(() => {
-      fetch("/api/operators/heartbeat", { method: "POST" }).catch(() => {});
-    }, HEARTBEAT_INTERVAL_MS);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [status]);
+  }, []);
 
   useEffect(() => {
     const pusher = getPusherClient();
@@ -68,17 +85,6 @@ export function OperatorPanel({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operatorId]);
-
-  async function toggleStatus() {
-    const next = status === "ONLINE" ? "OFFLINE" : "ONLINE";
-    setStatus(next);
-    await fetch("/api/operators/status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: next }),
-    });
-    router.refresh();
-  }
 
   async function handleAtender(lead: QueueLead) {
     const templateId = selectedTemplate[lead.id] ?? templates[0]?.id;
@@ -98,7 +104,11 @@ export function OperatorPanel({
 
     setPending(lead.id);
     try {
-      await fetch(`/api/leads/${lead.id}/atender`, { method: "POST" });
+      await fetch(`/api/leads/${lead.id}/atender`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id }),
+      });
       router.refresh();
     } finally {
       setPending(null);
@@ -107,99 +117,118 @@ export function OperatorPanel({
 
   return (
     <div className="space-y-6">
-      <Card className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-neutral-400">Seu status</p>
-          <p className="mt-1 flex items-center gap-2 text-sm font-medium">
-            {status === "ONLINE" ? (
-              <Badge tone="green">Online</Badge>
-            ) : (
-              <Badge tone="gray">Offline</Badge>
-            )}
-            <span className="text-neutral-500">
-              · {attendedToday} atendidos hoje
-            </span>
-          </p>
-        </div>
-        <Button
-          variant={status === "ONLINE" ? "danger" : "primary"}
-          onClick={toggleStatus}
-        >
-          {status === "ONLINE" ? "Ficar offline" : "Ficar online"}
-        </Button>
-      </Card>
-
-      {status === "OFFLINE" && (
-        <p className="text-sm text-neutral-500">
-          Você está offline e não vai receber novos leads. Fique online para
-          começar a atender.
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Meus leads</h1>
+        <p className="text-sm text-secondary">
+          {new Date().toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+          })}
         </p>
-      )}
-
-      <div className="space-y-4">
-        {initialQueue.map((lead) => (
-          <Card key={lead.id} className="space-y-3">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-medium">{lead.customerName}</p>
-                <p className="text-xs text-neutral-400">{lead.phone}</p>
-              </div>
-              <Badge tone={lead.paymentStatus === "APPROVED" ? "green" : "yellow"}>
-                {lead.paymentStatus === "APPROVED" ? "Aprovado" : "Pendente"}
-              </Badge>
-            </div>
-            <div className="text-xs text-neutral-400">
-              {lead.product ?? "Produto não informado"}
-              {lead.value != null && (
-                <span>
-                  {" "}
-                  ·{" "}
-                  {lead.value.toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
-                </span>
-              )}
-              {" · "}
-              {lead.gateway}
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select
-                className="flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 focus:border-emerald-500 focus:outline-none"
-                value={selectedTemplate[lead.id] ?? templates[0]?.id ?? ""}
-                onChange={(e) =>
-                  setSelectedTemplate((prev) => ({
-                    ...prev,
-                    [lead.id]: e.target.value,
-                  }))
-                }
-              >
-                {templates.length === 0 && (
-                  <option value="">Nenhuma mensagem cadastrada</option>
-                )}
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
-              <Button
-                onClick={() => handleAtender(lead)}
-                disabled={pending === lead.id || templates.length === 0}
-              >
-                Atender no WhatsApp
-              </Button>
-            </div>
-          </Card>
-        ))}
-
-        {initialQueue.length === 0 && (
-          <p className="text-sm text-neutral-500">
-            Nenhum lead na sua fila no momento.
-          </p>
-        )}
       </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <p className="text-xs text-secondary">Recebidos hoje</p>
+          <p className="mt-2.5 font-mono text-3xl font-semibold text-primary">
+            {receivedToday}
+          </p>
+        </Card>
+        <Card>
+          <p className="text-xs text-secondary">Atendidos hoje</p>
+          <p className="mt-2.5 font-mono text-3xl font-semibold text-primary">
+            {attendedToday}
+          </p>
+        </Card>
+        <Card>
+          <p className="text-xs text-secondary">Minha 1ª resposta média</p>
+          <p className="mt-2.5 font-mono text-3xl font-semibold text-primary">
+            {formatAvgResponse(avgFirstResponseSeconds)}
+          </p>
+        </Card>
+      </div>
+
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">Fila de atendimento</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs text-secondary">
+                <th className="pb-2.5">Nome</th>
+                <th className="pb-2.5">Produto</th>
+                <th className="pb-2.5">Tipo</th>
+                <th className="pb-2.5">Esperando há</th>
+                <th className="pb-2.5">Status</th>
+                <th className="pb-2.5">Mensagem</th>
+                <th className="pb-2.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {initialQueue.map((lead) => {
+                const assignedAtMs = lead.assignedAt ? new Date(lead.assignedAt).getTime() : now;
+                const waitSeconds = Math.max(0, Math.floor((now - assignedAtMs) / 1000));
+                return (
+                  <tr key={lead.id} className="border-b border-border last:border-0">
+                    <td className="py-3.5 pr-2 font-semibold text-primary">
+                      {lead.customerName}
+                    </td>
+                    <td className="py-3.5 pr-2 font-semibold text-accent">
+                      {lead.product ? `${lead.product} — ${lead.producer?.name ?? "-"}` : lead.producer?.name ?? "-"}
+                    </td>
+                    <td className="py-3.5 pr-2">{paymentTypeBadge(lead.paymentStatus)}</td>
+                    <td className="py-3.5 pr-2 font-mono text-xs font-semibold text-warning">
+                      {formatWait(waitSeconds)}
+                    </td>
+                    <td className="py-3.5 pr-2">
+                      <span className="text-xs font-semibold text-warning">Novo</span>
+                    </td>
+                    <td className="py-3.5 pr-2">
+                      <select
+                        className="w-full rounded-md border border-border bg-app px-2 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
+                        value={selectedTemplate[lead.id] ?? templates[0]?.id ?? ""}
+                        onChange={(e) =>
+                          setSelectedTemplate((prev) => ({ ...prev, [lead.id]: e.target.value }))
+                        }
+                      >
+                        {templates.length === 0 && <option value="">Nenhuma mensagem</option>}
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.title}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <Button
+                          onClick={() => handleAtender(lead)}
+                          disabled={pending === lead.id || templates.length === 0}
+                        >
+                          Atender
+                        </Button>
+                        <Link
+                          href={`/atendimento/chat/${lead.id}`}
+                          className="text-xs text-secondary hover:text-accent"
+                        >
+                          Prévia do chat
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {initialQueue.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-secondary">
+                    Nenhum lead na sua fila no momento.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

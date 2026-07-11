@@ -9,10 +9,11 @@ export default async function AtendimentoPage() {
   return (
     <OperatorPanel
       operatorId={session!.user.id}
-      initialStatus={data.status}
       initialQueue={data.queue}
       templates={data.templates}
       attendedToday={data.attendedToday}
+      receivedToday={data.receivedToday}
+      avgFirstResponseSeconds={data.avgFirstResponseSeconds}
     />
   );
 }
