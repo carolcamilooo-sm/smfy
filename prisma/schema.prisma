@@ -12,6 +12,12 @@ enum Role {
   OPERATOR
 }
 
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum OperatorStatus {
   ONLINE
   OFFLINE
@@ -27,6 +33,7 @@ enum Gateway {
 enum PaymentStatus {
   APPROVED
   PENDING
+  DECLINED
   OTHER
 }
 
@@ -47,7 +54,10 @@ model User {
   email          String           @unique
   passwordHash   String
   role           Role             @default(OPERATOR)
+  approvalStatus ApprovalStatus   @default(APPROVED)
   status         OperatorStatus   @default(OFFLINE)
+  notifySound       Boolean       @default(true)
+  notifyIdleWarning Boolean       @default(true)
   lastActivityAt DateTime         @default(now())
   createdAt      DateTime         @default(now())
 
@@ -59,11 +69,13 @@ model User {
 }
 
 model DistributionRule {
-  id         String  @id @default(cuid())
-  operatorId String  @unique
-  operator   User    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  weight     Int     @default(1)
-  active     Boolean @default(true)
+  id             String  @id @default(cuid())
+  operatorId     String  @unique
+  operator       User    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  weightApproved Int     @default(0)
+  weightPending  Int     @default(0)
+  weightDeclined Int     @default(0)
+  active         Boolean @default(true)
 
   @@map("distribution_rules")
 }
@@ -109,6 +121,8 @@ model Lead {
   assignedOperator    User?         @relation("AssignedLeads", fields: [assignedOperatorId], references: [id])
   assignedAt          DateTime?
   attendedAt          DateTime?
+  usedTemplateId      String?
+  usedTemplate        MessageTemplate? @relation(fields: [usedTemplateId], references: [id])
   rawPayload          Json
   createdAt           DateTime      @default(now())
 
@@ -127,6 +141,8 @@ model MessageTemplate {
   content   String
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  leads Lead[]
 
   @@map("message_templates")
 }
