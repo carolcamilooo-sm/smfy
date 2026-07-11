@@ -1,42 +1,48 @@
-import Link from "next/link";
+import { auth } from "@/auth";
+import { Logo } from "@/components/logo";
+import { SidebarNav } from "@/components/sidebar-nav";
 import { SignOutButton } from "@/components/sign-out-button";
 
-const NAV_LINKS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/produtores", label: "Produtores" },
-  { href: "/dashboard/templates", label: "Mensagens" },
-  { href: "/dashboard/operadores", label: "Equipe de Atendimento" },
-  { href: "/dashboard/integracoes", label: "Integrações" },
-  { href: "/dashboard/ajustes", label: "Ajustes" },
-];
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  const name = session?.user.name ?? "";
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-neutral-800">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <nav className="flex flex-wrap items-center gap-5 text-sm">
-            <span className="font-semibold text-neutral-100">smfy</span>
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-neutral-400 hover:text-neutral-100"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+    <div className="flex min-h-screen">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-app p-4">
+        <div className="mb-6 px-2">
+          <Logo className="text-2xl" />
+        </div>
+
+        <SidebarNav />
+
+        <div className="mt-auto flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
+            {initials(name) || "?"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-primary">
+              {name}
+            </p>
+            <p className="text-xs text-secondary">Admin</p>
+          </div>
           <SignOutButton />
         </div>
-      </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        {children}
-      </main>
+      </aside>
+      <main className="flex-1 px-6 py-8">{children}</main>
     </div>
   );
 }

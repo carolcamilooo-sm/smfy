@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
@@ -12,45 +11,61 @@ async function requireAdmin() {
   }
 }
 
-export async function createOperator(formData: FormData) {
+export async function approveOperator(formData: FormData) {
   await requireAdmin();
 
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  const password = String(formData.get("password") ?? "");
+  const operatorId = String(formData.get("operatorId"));
 
-  if (!name || !email || password.length < 6) {
-    throw new Error("Preencha nome, e-mail e uma senha com 6+ caracteres.");
-  }
+  await prisma.user.update({
+    where: { id: operatorId },
+    data: { approvalStatus: "APPROVED" },
+  });
 
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  await prisma.user.create({
-    data: {
-      name,
-      email,
-      passwordHash,
-      role: "OPERATOR",
-      distributionRule: { create: { weight: 1, active: true } },
+  await prisma.distributionRule.upsert({
+    where: { operatorId },
+    update: {},
+    create: {
+      operatorId,
+      weightApproved: 1,
+      weightPending: 1,
+      weightDeclined: 1,
+      active: true,
     },
   });
 
   revalidatePath("/dashboard/operadores");
 }
 
+export async function rejectOperator(formData: FormData) {
+  await requireAdmin();
+
+  const operatorId = String(formData.get("operatorId"));
+
+  await prisma.user.update({
+    where: { id: operatorId },
+    data: { approvalStatus: "REJECTED" },
+  });
+
+  revalidatePath("/dashboard/operadores");
+}
+
+function clampPercent(value: FormDataEntryValue | null) {
+  return Math.min(100, Math.max(0, Number(value) || 0));
+}
+
 export async function updateDistribution(formData: FormData) {
   await requireAdmin();
 
   const operatorId = String(formData.get("operatorId"));
-  const weight = Number(formData.get("weight"));
+  const weightApproved = clampPercent(formData.get("weightApproved"));
+  const weightPending = clampPercent(formData.get("weightPending"));
+  const weightDeclined = clampPercent(formData.get("weightDeclined"));
   const active = formData.get("active") === "on";
 
   await prisma.distributionRule.upsert({
     where: { operatorId },
-    update: { weight, active },
-    create: { operatorId, weight, active },
+    update: { weightApproved, weightPending, weightDeclined, active },
+    create: { operatorId, weightApproved, weightPending, weightDeclined, active },
   });
 
   revalidatePath("/dashboard/operadores");
