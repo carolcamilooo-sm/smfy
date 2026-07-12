@@ -11,9 +11,9 @@ const GATEWAYS = [
   },
   {
     name: "PerfectPay",
-    status: "generic" as const,
+    status: "complete" as const,
     description:
-      "Parser genérico: tenta reconhecer os campos mais comuns (id, status, cliente, telefone, produto, valor). Envie um payload de exemplo real para eu ajustar o parser específico.",
+      "Parser completo: status da venda (aprovado, pendente, recusado, cancelado, carrinho abandonado etc.), cliente, produto e valor são lidos automaticamente. Sem verificação de assinatura — a PerfectPay não documenta esse mecanismo.",
   },
   {
     name: "Disrupty",

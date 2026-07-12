@@ -1,13 +1,14 @@
 import type { GatewayAdapter } from "./types";
 import { kiwifyAdapter } from "./kiwify";
 import { smpayAdapter } from "./smpay";
+import { perfectpayAdapter } from "./perfectpay";
 import { createGenericAdapter } from "./generic";
 
 export type GatewayKey = "kiwify" | "perfectpay" | "disrupty" | "smpay";
 
 export const GATEWAY_ADAPTERS: Record<GatewayKey, GatewayAdapter> = {
   kiwify: kiwifyAdapter,
-  perfectpay: createGenericAdapter("perfectpay"),
+  perfectpay: perfectpayAdapter,
   disrupty: createGenericAdapter("disrupty"),
   smpay: smpayAdapter,
 };
