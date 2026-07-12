@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,10 @@ export const dynamic = "force-dynamic";
 const textareaClass =
   "w-full rounded-lg border border-border bg-app px-3.5 py-3 text-sm text-primary focus:border-accent focus:outline-none";
 
-export default async function TemplatesPage() {
+export default async function MensagensAtendentePage() {
+  const session = await auth();
   const templates = await prisma.messageTemplate.findMany({
+    where: { operatorId: session!.user.id },
     orderBy: { createdAt: "desc" },
   });
 
@@ -19,8 +22,8 @@ export default async function TemplatesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-primary">Mensagens</h1>
         <p className="text-sm text-secondary">
-          Modelos de mensagem usados pelos operadores ao chamar o lead no
-          WhatsApp — use{" "}
+          Suas próprias mensagens pra chamar o lead no WhatsApp — só você
+          vê e escolhe entre elas ao atender. Use{" "}
           <code className="rounded bg-surface px-1 py-0.5 font-mono text-accent">
             {"{{nome}}"}
           </code>{" "}
@@ -58,7 +61,7 @@ export default async function TemplatesPage() {
       </Card>
 
       <div>
-        <h2 className="mb-3.5 text-sm font-semibold text-primary">Mensagens existentes</h2>
+        <h2 className="mb-3.5 text-sm font-semibold text-primary">Minhas mensagens</h2>
         <div className="space-y-3">
           {templates.map((template) => (
             <Card key={template.id} className="max-w-2xl">
@@ -106,7 +109,7 @@ export default async function TemplatesPage() {
           ))}
           {templates.length === 0 && (
             <p className="text-sm text-secondary">
-              Nenhuma mensagem cadastrada ainda.
+              Você ainda não cadastrou nenhuma mensagem.
             </p>
           )}
         </div>

@@ -67,6 +67,7 @@ model User {
   assignedLeads     Lead[]          @relation("AssignedLeads")
   leadEvents        LeadEvent[]
   productAccesses   ProductAccess[]
+  messageTemplates  MessageTemplate[]
 
   @@map("users")
 }
@@ -164,14 +165,17 @@ model Lead {
 }
 
 model MessageTemplate {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  active     Boolean  @default(true)
+  operatorId String?
+  operator   User?    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   leads Lead[]
 
+  @@index([operatorId])
   @@map("message_templates")
 }
 

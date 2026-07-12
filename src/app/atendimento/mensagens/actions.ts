@@ -4,42 +4,41 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
-async function requireAdmin() {
+async function requireOperator() {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
-    throw new Error("unauthorized");
-  }
+  if (!session) throw new Error("unauthorized");
+  return session.user.id;
 }
 
 export async function createTemplate(formData: FormData) {
-  await requireAdmin();
+  const operatorId = await requireOperator();
 
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
   if (!title || !content) throw new Error("Preencha título e mensagem.");
 
-  await prisma.messageTemplate.create({ data: { title, content } });
-  revalidatePath("/dashboard/templates");
+  await prisma.messageTemplate.create({ data: { title, content, operatorId } });
+  revalidatePath("/atendimento/mensagens");
 }
 
 export async function updateTemplate(formData: FormData) {
-  await requireAdmin();
+  const operatorId = await requireOperator();
 
   const id = String(formData.get("id"));
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
   const active = formData.get("active") === "on";
 
-  await prisma.messageTemplate.update({
-    where: { id },
+  await prisma.messageTemplate.updateMany({
+    where: { id, operatorId },
     data: { title, content, active },
   });
-  revalidatePath("/dashboard/templates");
+  revalidatePath("/atendimento/mensagens");
 }
 
 export async function deleteTemplate(formData: FormData) {
-  await requireAdmin();
+  const operatorId = await requireOperator();
   const id = String(formData.get("id"));
-  await prisma.messageTemplate.delete({ where: { id } });
-  revalidatePath("/dashboard/templates");
+  await prisma.messageTemplate.deleteMany({ where: { id, operatorId } });
+  revalidatePath("/atendimento/mensagens");
 }

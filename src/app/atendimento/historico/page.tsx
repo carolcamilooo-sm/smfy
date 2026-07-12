@@ -39,7 +39,7 @@ export default async function HistoricoAtendentePage({
   const [{ range, leads }, fallbackTemplate] = await Promise.all([
     getOperatorHistory(session!.user.id, { period, q }),
     prisma.messageTemplate.findFirst({
-      where: { active: true },
+      where: { active: true, operatorId: session!.user.id },
       orderBy: { title: "asc" },
       select: { content: true },
     }),

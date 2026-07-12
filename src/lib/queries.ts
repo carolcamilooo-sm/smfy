@@ -104,7 +104,7 @@ export async function getOperatorData(operatorId: string) {
         orderBy: { assignedAt: "asc" },
       }),
       prisma.messageTemplate.findMany({
-        where: { active: true },
+        where: { active: true, operatorId },
         orderBy: { title: "asc" },
       }),
       prisma.leadEvent.count({

@@ -58,18 +58,19 @@ async function main() {
       },
     });
     console.log(`Operador: ${operator.email} / senha: operador123`);
-  }
 
-  await prisma.messageTemplate.upsert({
-    where: { id: "seed-template-1" },
-    update: {},
-    create: {
-      id: "seed-template-1",
-      title: "Boas-vindas",
-      content:
-        "Olá {{nome}}! Vi que você se interessou por {{produto}} e ficou pendente. Posso te ajudar a finalizar?",
-    },
-  });
+    await prisma.messageTemplate.upsert({
+      where: { id: `seed-template-${operator.id}` },
+      update: {},
+      create: {
+        id: `seed-template-${operator.id}`,
+        title: "Boas-vindas",
+        content:
+          "Olá {{nome}}! Vi que você se interessou por {{produto}} e ficou pendente. Posso te ajudar a finalizar?",
+        operatorId: operator.id,
+      },
+    });
+  }
 }
 
 main()

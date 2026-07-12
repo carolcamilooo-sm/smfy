@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/atendimento", label: "Meus leads" },
+  { href: "/atendimento/mensagens", label: "Mensagens" },
   { href: "/atendimento/historico", label: "Histórico" },
   { href: "/atendimento/desempenho", label: "Meu desempenho" },
   { href: "/atendimento/ajustes", label: "Ajustes" },

@@ -90,7 +90,7 @@ export function OperatorPanel({
     const templateId = selectedTemplate[lead.id] ?? templates[0]?.id;
     const template = templates.find((t) => t.id === templateId);
     if (!template) {
-      alert("Cadastre uma mensagem em Configurações antes de atender.");
+      alert("Cadastre uma mensagem em Mensagens antes de atender.");
       return;
     }
 
