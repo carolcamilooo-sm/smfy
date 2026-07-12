@@ -162,7 +162,7 @@ export function OperatorPanel({
       <Card>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-primary">Fila de atendimento</h2>
-          {producers.length > 1 && (
+          {initialQueue.length > 0 && (
             <div className="flex items-center gap-2">
               <label htmlFor="producer-filter" className="text-xs text-secondary">
                 Produtor
