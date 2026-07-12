@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getLeadsForExport } from "@/lib/queries";
+import { getLeadsForExport, getLeadsByIds } from "@/lib/queries";
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -33,17 +33,22 @@ export async function GET(request: NextRequest) {
   }
 
   const params = request.nextUrl.searchParams;
-  const status = params.get("status");
-  const limit = Math.min(10000, Math.max(1, Number(params.get("limit")) || 500));
+  const idsParam = params.get("ids");
 
-  const leads = await getLeadsForExport({
-    q: params.get("q") ?? undefined,
-    status:
-      status === "attended" || status === "assigned" || status === "waiting" ? status : undefined,
-    period: params.get("period") ?? undefined,
-    producerId: params.get("producerId") ?? undefined,
-    limit,
-  });
+  const leads = idsParam
+    ? await getLeadsByIds(idsParam.split(",").filter(Boolean))
+    : await getLeadsForExport({
+        q: params.get("q") ?? undefined,
+        status: (() => {
+          const status = params.get("status");
+          return status === "attended" || status === "assigned" || status === "waiting"
+            ? status
+            : undefined;
+        })(),
+        period: params.get("period") ?? undefined,
+        producerId: params.get("producerId") ?? undefined,
+        limit: Math.min(10000, Math.max(1, Number(params.get("limit")) || 500)),
+      });
 
   const header = [
     "Data",

@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { getLeadsHistory } from "@/lib/queries";
 import { prisma } from "@/lib/db";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { HistoricoTable } from "@/components/historico-table";
 
 export const dynamic = "force-dynamic";
 
@@ -21,28 +20,6 @@ const PERIOD_OPTIONS = [
   { value: "yesterday", label: "Ontem" },
   { value: "month", label: "Este mês" },
 ];
-
-const MONTHS = [
-  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
-];
-
-function formatDate(date: Date) {
-  return `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-function paymentTypeBadge(status: string) {
-  if (status === "APPROVED") return <Badge tone="green">Lead pago</Badge>;
-  if (status === "PENDING") return <Badge tone="yellow">Pendente</Badge>;
-  if (status === "DECLINED") return <Badge tone="red">Carrinho</Badge>;
-  return <Badge tone="gray">Outro</Badge>;
-}
-
-function serviceStatusBadge(status: string) {
-  if (status === "ATTENDED") return <Badge tone="green">✓ Atendido</Badge>;
-  if (status === "ASSIGNED") return <Badge tone="blue">⏳ Em andamento</Badge>;
-  return <Badge tone="red">✗ Não atendido</Badge>;
-}
 
 export default async function HistoricoPage({
   searchParams,
@@ -82,7 +59,6 @@ export default async function HistoricoPage({
     params.set("page", String(target));
     return `?${params.toString()}`;
   }
-
 
   const windowStart = Math.max(1, Math.min(currentPage - 1, totalPages - 2));
   const pageNumbers = Array.from(
@@ -175,49 +151,7 @@ export default async function HistoricoPage({
         </Button>
       </form>
 
-      <Card className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-border bg-app text-xs text-secondary">
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Produto</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Atendente</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Data</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr key={lead.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 text-primary">{lead.customerName}</td>
-                  <td className="px-4 py-3 text-accent">
-                    {lead.product
-                      ? `${lead.product} — ${lead.producer?.name ?? "-"}`
-                      : lead.producer?.name ?? "-"}
-                  </td>
-                  <td className="px-4 py-3">{paymentTypeBadge(lead.paymentStatus)}</td>
-                  <td className="px-4 py-3 text-secondary">
-                    {lead.assignedOperator?.name ?? "-"}
-                  </td>
-                  <td className="px-4 py-3">{serviceStatusBadge(lead.serviceStatus)}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-secondary">
-                    {formatDate(lead.createdAt)}
-                  </td>
-                </tr>
-              ))}
-              {leads.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-secondary">
-                    Nenhum lead encontrado para esse filtro.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <HistoricoTable leads={leads} />
 
       <div className="flex items-center justify-between text-xs text-secondary">
         <div>

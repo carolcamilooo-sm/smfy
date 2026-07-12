@@ -543,3 +543,21 @@ export async function getLeadsForExport(params: LeadsExportParams) {
     value: lead.value ? Number(lead.value) : null,
   }));
 }
+
+/** For "baixar selecionados": exports exactly the checked rows, ignoring the page's other filters. */
+export async function getLeadsByIds(ids: string[]) {
+  const leads = await prisma.lead.findMany({
+    where: { id: { in: ids } },
+    include: {
+      producer: { select: { name: true } },
+      assignedOperator: { select: { name: true } },
+      usedTemplate: { select: { title: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return leads.map((lead) => ({
+    ...lead,
+    value: lead.value ? Number(lead.value) : null,
+  }));
+}
