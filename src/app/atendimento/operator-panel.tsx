@@ -67,6 +67,16 @@ export function OperatorPanel({
   const [selectedTemplate, setSelectedTemplate] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [producerFilter, setProducerFilter] = useState("all");
+
+  const producers = Array.from(
+    new Set(initialQueue.map((lead) => lead.producer?.name ?? "Sem produtor"))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredQueue =
+    producerFilter === "all"
+      ? initialQueue
+      : initialQueue.filter((lead) => (lead.producer?.name ?? "Sem produtor") === producerFilter);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -150,7 +160,29 @@ export function OperatorPanel({
       </div>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">Fila de atendimento</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-primary">Fila de atendimento</h2>
+          {producers.length > 1 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="producer-filter" className="text-xs text-secondary">
+                Produtor
+              </label>
+              <select
+                id="producer-filter"
+                value={producerFilter}
+                onChange={(e) => setProducerFilter(e.target.value)}
+                className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
+              >
+                <option value="all">Todos ({initialQueue.length})</option>
+                {producers.map((name) => (
+                  <option key={name} value={name}>
+                    {name} ({initialQueue.filter((l) => (l.producer?.name ?? "Sem produtor") === name).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -165,7 +197,7 @@ export function OperatorPanel({
               </tr>
             </thead>
             <tbody>
-              {initialQueue.map((lead) => {
+              {filteredQueue.map((lead) => {
                 const assignedAtMs = lead.assignedAt ? new Date(lead.assignedAt).getTime() : now;
                 const waitSeconds = Math.max(0, Math.floor((now - assignedAtMs) / 1000));
                 return (
@@ -218,10 +250,12 @@ export function OperatorPanel({
                   </tr>
                 );
               })}
-              {initialQueue.length === 0 && (
+              {filteredQueue.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-6 text-center text-secondary">
-                    Nenhum lead na sua fila no momento.
+                    {initialQueue.length === 0
+                      ? "Nenhum lead na sua fila no momento."
+                      : "Nenhum lead desse produtor na sua fila agora."}
                   </td>
                 </tr>
               )}
