@@ -154,7 +154,7 @@ function summarizeGroup(leads: { serviceStatus: string }[]) {
 export async function getDashboardData(rangeParams: DateRangeParams = {}) {
   const range = resolveDateRange(rangeParams);
 
-  const [leadsInRange, operators, recentLeads, attendedByOperator, producerLeadCounts] =
+  const [leadsInRange, operators, recentLeads, attendedByOperator] =
     await Promise.all([
       prisma.lead.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
@@ -181,20 +181,17 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
         },
         _count: { _all: true },
       }),
-      prisma.lead.groupBy({
-        by: ["producerId"],
-        where: { createdAt: { gte: range.from, lte: range.to } },
-        _count: { _all: true },
-      }),
     ]);
 
   const attendedMap = new Map(
     attendedByOperator.map((a) => [a.operatorId, a._count._all])
   );
 
-  const producerIds = producerLeadCounts
-    .map((p) => p.producerId)
-    .filter((id): id is string => id !== null);
+  const producerIds = [
+    ...new Set(
+      leadsInRange.map((l) => l.producerId).filter((id): id is string => id !== null)
+    ),
+  ];
   const producerNames = producerIds.length
     ? await prisma.producer.findMany({
         where: { id: { in: producerIds } },
@@ -203,13 +200,30 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
     : [];
   const producerNameMap = new Map(producerNames.map((p) => [p.id, p.name]));
 
-  const producerSummary = producerLeadCounts
-    .map((p) => ({
-      producerId: p.producerId,
-      name: p.producerId ? (producerNameMap.get(p.producerId) ?? "Produtor removido") : "Sem produtor",
-      count: p._count._all,
-    }))
-    .sort((a, b) => b.count - a.count);
+  const producerCounts = new Map<
+    string,
+    { producerId: string | null; name: string; approved: number; pending: number; declined: number }
+  >();
+  for (const lead of leadsInRange) {
+    const key = lead.producerId ?? "sem-produtor";
+    if (!producerCounts.has(key)) {
+      producerCounts.set(key, {
+        producerId: lead.producerId,
+        name: lead.producerId ? (producerNameMap.get(lead.producerId) ?? "Produtor removido") : "Sem produtor",
+        approved: 0,
+        pending: 0,
+        declined: 0,
+      });
+    }
+    const entry = producerCounts.get(key)!;
+    if (lead.paymentStatus === "APPROVED") entry.approved += 1;
+    else if (lead.paymentStatus === "PENDING") entry.pending += 1;
+    else if (lead.paymentStatus === "DECLINED") entry.declined += 1;
+  }
+
+  const producerSummary = [...producerCounts.values()].sort(
+    (a, b) => b.approved + b.pending + b.declined - (a.approved + a.pending + a.declined)
+  );
 
   const stats = {
     total: leadsInRange.length,

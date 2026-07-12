@@ -72,7 +72,6 @@ export default async function DashboardPage({
     from,
     to,
   });
-  const maxProducerCount = Math.max(1, ...producerSummary.map((p) => p.count));
   const searchResults = q ? await searchLeads(q) : null;
 
   const onlineCount = operatorSummaries.filter((op) => op.effectiveStatus !== "OFFLINE").length;
@@ -179,26 +178,38 @@ export default async function DashboardPage({
         <h2 className="mb-4 text-sm font-semibold text-primary">
           Leads por produtor {periodLabel(range.period)}
         </h2>
-        <div className="space-y-3">
-          {producerSummary.map((p) => (
-            <div key={p.producerId ?? "sem-produtor"}>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-primary">{p.name}</span>
-                <span className="font-mono text-secondary">{p.count}</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-raised">
-                <div
-                  className="h-full rounded-full bg-accent"
-                  style={{ width: `${(p.count / maxProducerCount) * 100}%` }}
-                />
-              </div>
-            </div>
-          ))}
-          {producerSummary.length === 0 && (
-            <p className="text-sm text-secondary">
-              Nenhum lead recebido no período.
-            </p>
-          )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs text-secondary">
+                <th className="pb-2 pr-3">Produtor</th>
+                <th className="pb-2 pr-3">Aprovados</th>
+                <th className="pb-2 pr-3">Pendentes</th>
+                <th className="pb-2 pr-3">Carrinho abandonado</th>
+                <th className="pb-2">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {producerSummary.map((p) => (
+                <tr key={p.producerId ?? "sem-produtor"} className="border-t border-border">
+                  <td className="py-2 text-primary">{p.name}</td>
+                  <td className="py-2 font-mono text-success">{p.approved}</td>
+                  <td className="py-2 font-mono text-warning">{p.pending}</td>
+                  <td className="py-2 font-mono text-danger">{p.declined}</td>
+                  <td className="py-2 font-mono text-secondary">
+                    {p.approved + p.pending + p.declined}
+                  </td>
+                </tr>
+              ))}
+              {producerSummary.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-secondary">
+                    Nenhum lead recebido no período.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
 
