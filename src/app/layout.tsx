@@ -16,7 +16,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Leads Recovery",
+  title: "SMFY",
   description: "Recepção e distribuição de leads para recuperação de vendas",
 };
 
