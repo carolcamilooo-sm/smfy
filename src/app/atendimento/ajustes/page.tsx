@@ -1,17 +1,22 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { getBaseUrl } from "@/lib/base-url";
 import { Card } from "@/components/ui/card";
 import { ProfileForm } from "@/components/profile-form";
 import { PasswordForm } from "@/components/password-form";
 import { NotificationToggle } from "@/components/notification-toggle";
+import { SalesWebhookCard } from "@/components/sales-webhook-card";
+import { generateSalesWebhookToken } from "./sales-webhook-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function AjustesAtendentePage() {
   const session = await auth();
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: session!.user.id },
-  });
+  const [user, baseUrl, salesCount] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: session!.user.id } }),
+    getBaseUrl(),
+    prisma.operatorSale.count({ where: { operatorId: session!.user.id } }),
+  ]);
 
   return (
     <div className="max-w-xl space-y-6">
@@ -43,6 +48,18 @@ export default async function AjustesAtendentePage() {
           field="notifyIdleWarning"
           label="Aviso antes de ficar inativo por tempo ocioso"
           initialValue={user.notifyIdleWarning}
+        />
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Meu webhook de vendas
+        </h2>
+        <SalesWebhookCard
+          baseUrl={baseUrl}
+          token={user.salesWebhookToken}
+          salesCount={salesCount}
+          generateToken={generateSalesWebhookToken}
         />
       </Card>
     </div>

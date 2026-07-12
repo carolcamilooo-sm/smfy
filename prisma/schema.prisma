@@ -60,6 +60,7 @@ model User {
   priority       Boolean          @default(false)
   notifySound       Boolean       @default(true)
   notifyIdleWarning Boolean       @default(true)
+  salesWebhookToken String?       @unique
   lastActivityAt DateTime         @default(now())
   createdAt      DateTime         @default(now())
 
@@ -68,6 +69,7 @@ model User {
   leadEvents        LeadEvent[]
   productAccesses   ProductAccess[]
   messageTemplates  MessageTemplate[]
+  operatorSales     OperatorSale[]
 
   @@map("users")
 }
@@ -177,6 +179,27 @@ model MessageTemplate {
 
   @@index([operatorId])
   @@map("message_templates")
+}
+
+/**
+ * Independent from the Lead pipeline: a sale the operator personally
+ * converted, reported by their own gateway webhook — purely for the
+ * sales-count ranking, not routed through the distribution engine.
+ */
+model OperatorSale {
+  id           String   @id @default(cuid())
+  operatorId   String
+  operator     User     @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  gateway      Gateway
+  externalId   String
+  customerName String?
+  value        Decimal? @db.Decimal(10, 2)
+  rawPayload   Json
+  createdAt    DateTime @default(now())
+
+  @@unique([operatorId, gateway, externalId])
+  @@index([operatorId, createdAt])
+  @@map("operator_sales")
 }
 
 model LeadEvent {

@@ -569,3 +569,35 @@ export async function getLeadsByIds(ids: string[]) {
     value: lead.value ? Number(lead.value) : null,
   }));
 }
+
+export type SalesRankingEntry = { operatorId: string; name: string; count: number };
+
+/**
+ * Ranking by OperatorSale count (personal webhook conversions), not by the
+ * Lead pipeline — sorted desc, ties broken by name so the order is stable.
+ */
+export async function getSalesRanking(params: DateRangeParams): Promise<{
+  range: DateRange;
+  ranking: SalesRankingEntry[];
+}> {
+  const range = resolveDateRange({ period: params.period ?? "today", from: params.from, to: params.to });
+
+  const [operators, counts] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "OPERATOR", approvalStatus: "APPROVED" },
+      select: { id: true, name: true },
+    }),
+    prisma.operatorSale.groupBy({
+      by: ["operatorId"],
+      where: { createdAt: { gte: range.from, lte: range.to } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countMap = new Map(counts.map((c) => [c.operatorId, c._count._all]));
+  const ranking = operators
+    .map((op) => ({ operatorId: op.id, name: op.name, count: countMap.get(op.id) ?? 0 }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  return { range, ranking };
+}

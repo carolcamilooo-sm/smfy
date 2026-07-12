@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/atendimento/mensagens", label: "Mensagens" },
   { href: "/atendimento/historico", label: "Histórico" },
   { href: "/atendimento/desempenho", label: "Meu desempenho" },
+  { href: "/atendimento/ranking", label: "Ranking" },
   { href: "/atendimento/ajustes", label: "Ajustes" },
 ];
 
