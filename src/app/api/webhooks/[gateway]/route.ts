@@ -26,10 +26,12 @@ export async function POST(
 
   const token = request.nextUrl.searchParams.get("token");
   if (!token) {
+    console.warn(`[webhook:${gateway}] request with no ?token= query param`);
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const producer = await prisma.producer.findUnique({ where: { webhookToken: token } });
   if (!producer) {
+    console.warn(`[webhook:${gateway}] no producer matches token ${token.slice(0, 8)}...`);
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!producer.active) {

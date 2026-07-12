@@ -82,12 +82,18 @@ export const smpayAdapter: GatewayAdapter = {
     if (!secret) return true; // signature check skipped until a secret is configured
 
     const signatureHeader = headers.get("x-signature");
-    if (!signatureHeader) return false;
+    if (!signatureHeader) {
+      console.warn("[webhook:smpay] missing X-Signature header");
+      return false;
+    }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(rawBody);
-    } catch {
+    } catch (err) {
+      console.warn(
+        `[webhook:smpay] rawBody failed JSON.parse in verifySignature: ${err instanceof Error ? err.message : err}. rawBody length=${rawBody.length}, first 100 chars: ${rawBody.slice(0, 100)}`
+      );
       return false;
     }
 
@@ -99,10 +105,16 @@ export const smpayAdapter: GatewayAdapter = {
     try {
       a = Buffer.from(expected, "hex");
       b = Buffer.from(provided, "hex");
-    } catch {
+    } catch (err) {
+      console.warn(`[webhook:smpay] signature header isn't valid hex: "${signatureHeader}" (${err instanceof Error ? err.message : err})`);
       return false;
     }
-    if (a.length !== b.length) return false;
-    return timingSafeEqual(a, b);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      console.warn(
+        `[webhook:smpay] signature mismatch. expected=${expected.slice(0, 12)}... provided=${provided.slice(0, 12)}... secretSource=${producerSecret ? "producer" : "env"} bodyLen=${rawBody.length}`
+      );
+      return false;
+    }
+    return true;
   },
 };
