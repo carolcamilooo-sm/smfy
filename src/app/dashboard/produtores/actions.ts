@@ -74,3 +74,32 @@ export async function updateSmpaySecret(formData: FormData) {
   });
   revalidatePath("/dashboard/produtores");
 }
+
+/**
+ * Producers with lead history can't be hard-deleted (leads reference them
+ * for reporting), so they're archived instead: hidden from the active list
+ * and their webhook stops creating new leads, but past leads stay intact.
+ * Only producers with zero leads are actually erased.
+ */
+export async function removeProducer(formData: FormData) {
+  await requireAdmin();
+
+  const producerId = String(formData.get("producerId"));
+  const leadCount = await prisma.lead.count({ where: { producerId } });
+
+  if (leadCount === 0) {
+    await prisma.producer.delete({ where: { id: producerId } });
+  } else {
+    await prisma.producer.update({ where: { id: producerId }, data: { active: false } });
+  }
+
+  revalidatePath("/dashboard/produtores");
+}
+
+export async function reactivateProducer(formData: FormData) {
+  await requireAdmin();
+
+  const producerId = String(formData.get("producerId"));
+  await prisma.producer.update({ where: { id: producerId }, data: { active: true } });
+  revalidatePath("/dashboard/produtores");
+}

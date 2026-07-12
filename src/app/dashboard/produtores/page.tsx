@@ -3,13 +3,17 @@ import { getBaseUrl } from "@/lib/base-url";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/copy-button";
+import { ConfirmForm } from "@/components/confirm-form";
 import {
   createProducer,
   addProduct,
   removeProduct,
   regenerateToken,
   updateSmpaySecret,
+  removeProducer,
+  reactivateProducer,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -23,13 +27,15 @@ const GATEWAYS = [
 
 export default async function ProdutoresPage() {
   const baseUrl = await getBaseUrl();
-  const producers = await prisma.producer.findMany({
+  const allProducers = await prisma.producer.findMany({
     include: {
       products: { orderBy: { createdAt: "asc" } },
       _count: { select: { leads: true } },
     },
     orderBy: { createdAt: "desc" },
   });
+  const producers = allProducers.filter((p) => p.active);
+  const archivedProducers = allProducers.filter((p) => !p.active);
 
   return (
     <div className="space-y-8">
@@ -74,12 +80,27 @@ export default async function ProdutoresPage() {
                   leads recebidos
                 </p>
               </div>
-              <form action={regenerateToken}>
-                <input type="hidden" name="producerId" value={producer.id} />
-                <Button type="submit" variant="secondary">
-                  Gerar novo token
-                </Button>
-              </form>
+              <div className="flex gap-2">
+                <form action={regenerateToken}>
+                  <input type="hidden" name="producerId" value={producer.id} />
+                  <Button type="submit" variant="secondary">
+                    Gerar novo token
+                  </Button>
+                </form>
+                <ConfirmForm
+                  action={removeProducer}
+                  confirmMessage={
+                    producer._count.leads === 0
+                      ? `Remover "${producer.name}" permanentemente? Essa ação não pode ser desfeita.`
+                      : `"${producer.name}" tem ${producer._count.leads} lead(s) no histórico, então vai ser arquivado (não excluído) e sair da lista de produtores ativos. O webhook dele para de gerar leads novos. Continuar?`
+                  }
+                >
+                  <input type="hidden" name="producerId" value={producer.id} />
+                  <Button type="submit" variant="danger">
+                    Remover
+                  </Button>
+                </ConfirmForm>
+              </div>
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -178,6 +199,36 @@ export default async function ProdutoresPage() {
           </p>
         )}
       </div>
+
+      {archivedProducers.length > 0 && (
+        <Card>
+          <h2 className="mb-4 text-sm font-semibold text-primary">
+            Produtores arquivados
+          </h2>
+          <div className="space-y-2">
+            {archivedProducers.map((producer) => (
+              <div
+                key={producer.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-3 first:border-t-0"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm text-secondary">{producer.name}</span>
+                  <Badge tone="gray">Arquivado</Badge>
+                  <span className="text-xs text-muted">
+                    {producer._count.leads} lead(s) no histórico
+                  </span>
+                </div>
+                <form action={reactivateProducer}>
+                  <input type="hidden" name="producerId" value={producer.id} />
+                  <Button type="submit" variant="secondary">
+                    Reativar
+                  </Button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

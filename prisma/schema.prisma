@@ -85,6 +85,7 @@ model Producer {
   name               String
   webhookToken       String   @unique
   smpayWebhookSecret String?
+  active             Boolean  @default(true)
   createdAt          DateTime @default(now())
 
   products Product[]

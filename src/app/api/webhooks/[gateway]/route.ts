@@ -32,6 +32,9 @@ export async function POST(
   if (!producer) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (!producer.active) {
+    return NextResponse.json({ ignored: true, reason: "producer archived" }, { status: 200 });
+  }
 
   const rawBody = await request.text();
   const adapter = GATEWAY_ADAPTERS[gateway];
