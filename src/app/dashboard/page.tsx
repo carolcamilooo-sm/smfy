@@ -67,11 +67,12 @@ export default async function DashboardPage({
   searchParams: Promise<{ q?: string; period?: string; from?: string; to?: string }>;
 }) {
   const { q, period, from, to } = await searchParams;
-  const { range, stats, volume, operatorSummaries, leads } = await getDashboardData({
+  const { range, stats, volume, operatorSummaries, leads, producerSummary } = await getDashboardData({
     period,
     from,
     to,
   });
+  const maxProducerCount = Math.max(1, ...producerSummary.map((p) => p.count));
   const searchResults = q ? await searchLeads(q) : null;
 
   const onlineCount = operatorSummaries.filter((op) => op.effectiveStatus !== "OFFLINE").length;
@@ -173,6 +174,33 @@ export default async function DashboardPage({
           </div>
         </Card>
       </div>
+
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Leads por produtor {periodLabel(range.period)}
+        </h2>
+        <div className="space-y-3">
+          {producerSummary.map((p) => (
+            <div key={p.producerId ?? "sem-produtor"}>
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="text-primary">{p.name}</span>
+                <span className="font-mono text-secondary">{p.count}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-raised">
+                <div
+                  className="h-full rounded-full bg-accent"
+                  style={{ width: `${(p.count / maxProducerCount) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {producerSummary.length === 0 && (
+            <p className="text-sm text-secondary">
+              Nenhum lead recebido no período.
+            </p>
+          )}
+        </div>
+      </Card>
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-primary">

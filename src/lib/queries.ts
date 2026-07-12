@@ -154,7 +154,7 @@ function summarizeGroup(leads: { serviceStatus: string }[]) {
 export async function getDashboardData(rangeParams: DateRangeParams = {}) {
   const range = resolveDateRange(rangeParams);
 
-  const [leadsInRange, operators, recentLeads, attendedByOperator] =
+  const [leadsInRange, operators, recentLeads, attendedByOperator, producerLeadCounts] =
     await Promise.all([
       prisma.lead.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
@@ -181,11 +181,35 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
         },
         _count: { _all: true },
       }),
+      prisma.lead.groupBy({
+        by: ["producerId"],
+        where: { createdAt: { gte: range.from, lte: range.to } },
+        _count: { _all: true },
+      }),
     ]);
 
   const attendedMap = new Map(
     attendedByOperator.map((a) => [a.operatorId, a._count._all])
   );
+
+  const producerIds = producerLeadCounts
+    .map((p) => p.producerId)
+    .filter((id): id is string => id !== null);
+  const producerNames = producerIds.length
+    ? await prisma.producer.findMany({
+        where: { id: { in: producerIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const producerNameMap = new Map(producerNames.map((p) => [p.id, p.name]));
+
+  const producerSummary = producerLeadCounts
+    .map((p) => ({
+      producerId: p.producerId,
+      name: p.producerId ? (producerNameMap.get(p.producerId) ?? "Produtor removido") : "Sem produtor",
+      count: p._count._all,
+    }))
+    .sort((a, b) => b.count - a.count);
 
   const stats = {
     total: leadsInRange.length,
@@ -211,7 +235,7 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
     value: lead.value ? Number(lead.value) : null,
   }));
 
-  return { range, stats, volume, operatorSummaries, leads };
+  return { range, stats, volume, operatorSummaries, leads, producerSummary };
 }
 
 export async function getOperatorHistory(
