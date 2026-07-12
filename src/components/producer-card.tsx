@@ -24,6 +24,7 @@ const GATEWAYS = [
   },
   { key: "disrupty", label: "Disrupty", secretField: null, secretLabel: null },
   { key: "smpay", label: "SMPay", secretField: "smpayWebhookSecret", secretLabel: "Secret do webhook SMPay" },
+  { key: "payt", label: "PayT", secretField: "paytIntegrationKey", secretLabel: "Integration key da PayT" },
 ] as const;
 
 type ProductAccess = {
@@ -54,6 +55,7 @@ type Producer = {
   smpayWebhookSecret: string | null;
   kiwifyWebhookSecret: string | null;
   perfectpayToken: string | null;
+  paytIntegrationKey: string | null;
   products: Product[];
   _count: { leads: number };
 };

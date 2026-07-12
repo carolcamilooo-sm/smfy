@@ -10,6 +10,7 @@ const GATEWAYS = [
   { key: "perfectpay", label: "PerfectPay" },
   { key: "disrupty", label: "Disrupty" },
   { key: "smpay", label: "SMPay" },
+  { key: "payt", label: "PayT" },
 ] as const;
 
 export function SalesWebhookCard({

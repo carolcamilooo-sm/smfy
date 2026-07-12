@@ -28,6 +28,7 @@ enum Gateway {
   PERFECTPAY
   DISRUPTY
   SMPAY
+  PAYT
 }
 
 enum PaymentStatus {
@@ -93,6 +94,7 @@ model Producer {
   smpayWebhookSecret  String?
   kiwifyWebhookSecret String?
   perfectpayToken     String?
+  paytIntegrationKey  String?
   active              Boolean  @default(true)
   createdAt           DateTime @default(now())
 

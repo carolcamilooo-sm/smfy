@@ -96,7 +96,12 @@ export async function regenerateToken(formData: FormData) {
   revalidatePath("/dashboard/produtores");
 }
 
-const SECRET_FIELDS = ["smpayWebhookSecret", "kiwifyWebhookSecret", "perfectpayToken"] as const;
+const SECRET_FIELDS = [
+  "smpayWebhookSecret",
+  "kiwifyWebhookSecret",
+  "perfectpayToken",
+  "paytIntegrationKey",
+] as const;
 type SecretField = (typeof SECRET_FIELDS)[number];
 
 export async function updateGatewaySecret(formData: FormData) {
