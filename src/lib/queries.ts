@@ -451,14 +451,15 @@ const HISTORY_PAGE_SIZE = 20;
 export type LeadsHistoryParams = DateRangeParams & {
   q?: string;
   status?: "attended" | "assigned" | "waiting";
+  producerId?: string;
   page?: number;
 };
 
-export async function getLeadsHistory(params: LeadsHistoryParams) {
-  const range = resolveDateRange({ period: params.period ?? "7d", from: params.from, to: params.to });
-  const q = params.q?.trim();
-  const page = Math.max(1, params.page ?? 1);
-
+/** Shared by getLeadsHistory (paginated view) and the CSV export, so both filter identically. */
+function buildLeadsHistoryWhere(
+  params: Pick<LeadsHistoryParams, "q" | "status" | "producerId">,
+  range: DateRange
+): Prisma.LeadWhereInput {
   const where: Prisma.LeadWhereInput = {
     createdAt: { gte: range.from, lte: range.to },
   };
@@ -468,12 +469,25 @@ export async function getLeadsHistory(params: LeadsHistoryParams) {
       params.status === "attended" ? "ATTENDED" : params.status === "assigned" ? "ASSIGNED" : "WAITING";
   }
 
+  if (params.producerId) {
+    where.producerId = params.producerId;
+  }
+
+  const q = params.q?.trim();
   if (q) {
     where.OR = [
       { customerName: { contains: q, mode: "insensitive" } },
       { product: { contains: q, mode: "insensitive" } },
     ];
   }
+
+  return where;
+}
+
+export async function getLeadsHistory(params: LeadsHistoryParams) {
+  const range = resolveDateRange({ period: params.period ?? "7d", from: params.from, to: params.to });
+  const page = Math.max(1, params.page ?? 1);
+  const where = buildLeadsHistoryWhere(params, range);
 
   const [total, leads] = await Promise.all([
     prisma.lead.count({ where }),
@@ -500,4 +514,32 @@ export async function getLeadsHistory(params: LeadsHistoryParams) {
       value: lead.value ? Number(lead.value) : null,
     })),
   };
+}
+
+export type LeadsExportParams = DateRangeParams & {
+  q?: string;
+  status?: "attended" | "assigned" | "waiting";
+  producerId?: string;
+  limit: number;
+};
+
+export async function getLeadsForExport(params: LeadsExportParams) {
+  const range = resolveDateRange({ period: params.period ?? "7d", from: params.from, to: params.to });
+  const where = buildLeadsHistoryWhere(params, range);
+
+  const leads = await prisma.lead.findMany({
+    where,
+    include: {
+      producer: { select: { name: true } },
+      assignedOperator: { select: { name: true } },
+      usedTemplate: { select: { title: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: params.limit,
+  });
+
+  return leads.map((lead) => ({
+    ...lead,
+    value: lead.value ? Number(lead.value) : null,
+  }));
 }

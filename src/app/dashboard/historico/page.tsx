@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getLeadsHistory } from "@/lib/queries";
+import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -45,27 +47,42 @@ function serviceStatusBadge(status: string) {
 export default async function HistoricoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; period?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    period?: string;
+    producerId?: string;
+    page?: string;
+  }>;
 }) {
-  const { q, status, period, page } = await searchParams;
+  const { q, status, period, producerId, page } = await searchParams;
   const statusParam =
     status === "attended" || status === "assigned" || status === "waiting" ? status : undefined;
 
-  const { leads, total, page: currentPage, totalPages, range } = await getLeadsHistory({
-    q,
-    status: statusParam,
-    period,
-    page: page ? Number(page) : 1,
-  });
+  const [{ leads, total, page: currentPage, totalPages, range }, producers] = await Promise.all([
+    getLeadsHistory({
+      q,
+      status: statusParam,
+      producerId,
+      period,
+      page: page ? Number(page) : 1,
+    }),
+    prisma.producer.findMany({
+      select: { id: true, name: true, active: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   function pageHref(target: number) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (status) params.set("status", status);
+    if (producerId) params.set("producerId", producerId);
     params.set("period", range.period);
     params.set("page", String(target));
     return `?${params.toString()}`;
   }
+
 
   const windowStart = Math.max(1, Math.min(currentPage - 1, totalPages - 2));
   const pageNumbers = Array.from(
@@ -113,6 +130,49 @@ export default async function HistoricoPage({
             </option>
           ))}
         </select>
+        <select
+          name="producerId"
+          defaultValue={producerId ?? ""}
+          className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm text-secondary focus:border-accent focus:outline-none"
+        >
+          <option value="">Todos os produtores</option>
+          {producers.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+              {!p.active ? " (arquivado)" : ""}
+            </option>
+          ))}
+        </select>
+        <Button type="submit" variant="secondary">
+          Filtrar
+        </Button>
+      </form>
+
+      <form
+        method="get"
+        action="/api/leads/export"
+        className="flex flex-wrap items-end gap-3"
+      >
+        <input type="hidden" name="q" value={q ?? ""} />
+        <input type="hidden" name="status" value={status ?? ""} />
+        <input type="hidden" name="producerId" value={producerId ?? ""} />
+        <input type="hidden" name="period" value={range.period} />
+        <div>
+          <label className="mb-1.5 block text-xs text-secondary">
+            Quantidade de leads pra baixar (dos que batem com o filtro acima)
+          </label>
+          <Input
+            type="number"
+            name="limit"
+            defaultValue={500}
+            min={1}
+            max={10000}
+            className="w-40"
+          />
+        </div>
+        <Button type="submit" variant="secondary">
+          Baixar CSV
+        </Button>
       </form>
 
       <Card className="p-0">
