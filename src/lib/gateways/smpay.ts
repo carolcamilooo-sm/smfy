@@ -77,9 +77,9 @@ export const smpayAdapter: GatewayAdapter = {
     return lead;
   },
 
-  verifySignature(rawBody, headers) {
-    const secret = process.env.SMPAY_WEBHOOK_SECRET;
-    if (!secret) return true; // signature check skipped until secret is configured
+  verifySignature(rawBody, headers, _url, producerSecret) {
+    const secret = producerSecret || process.env.SMPAY_WEBHOOK_SECRET;
+    if (!secret) return true; // signature check skipped until a secret is configured
 
     const signatureHeader = headers.get("x-signature");
     if (!signatureHeader) return false;

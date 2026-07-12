@@ -81,10 +81,11 @@ model DistributionRule {
 }
 
 model Producer {
-  id           String   @id @default(cuid())
-  name         String
-  webhookToken String   @unique
-  createdAt    DateTime @default(now())
+  id                 String   @id @default(cuid())
+  name               String
+  webhookToken       String   @unique
+  smpayWebhookSecret String?
+  createdAt          DateTime @default(now())
 
   products Product[]
   leads    Lead[]

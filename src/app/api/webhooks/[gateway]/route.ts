@@ -37,7 +37,12 @@ export async function POST(
   const adapter = GATEWAY_ADAPTERS[gateway];
 
   if (adapter.verifySignature) {
-    const valid = adapter.verifySignature(rawBody, request.headers, request.nextUrl);
+    const valid = adapter.verifySignature(
+      rawBody,
+      request.headers,
+      request.nextUrl,
+      producer.smpayWebhookSecret
+    );
     if (!valid) {
       return NextResponse.json({ error: "invalid signature" }, { status: 401 });
     }

@@ -13,9 +13,11 @@ export type NormalizedLead = {
 export interface GatewayAdapter {
   /** Returns null when the event isn't relevant to lead tracking (should be ack'd and ignored). */
   parseWebhook(rawBody: string, headers: Headers): NormalizedLead | null;
+  /** `producerSecret` is the per-producer override, when the gateway issues one secret per webhook. */
   verifySignature?(
     rawBody: string,
     headers: Headers,
-    url: URL
+    url: URL,
+    producerSecret?: string | null
   ): boolean;
 }

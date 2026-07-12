@@ -4,7 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/copy-button";
-import { createProducer, addProduct, removeProduct, regenerateToken } from "./actions";
+import {
+  createProducer,
+  addProduct,
+  removeProduct,
+  regenerateToken,
+  updateSmpaySecret,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +146,27 @@ export default async function ProdutoresPage() {
                     );
                   })}
                 </div>
+
+                <form
+                  action={updateSmpaySecret}
+                  className="mt-4 flex gap-1.5 border-t border-border pt-3.5"
+                >
+                  <input type="hidden" name="producerId" value={producer.id} />
+                  <div className="min-w-0 flex-1">
+                    <span className="mb-1 block text-[11px] text-muted">
+                      Secret do webhook SMPay (um por produtor)
+                    </span>
+                    <Input
+                      name="smpayWebhookSecret"
+                      defaultValue={producer.smpayWebhookSecret ?? ""}
+                      placeholder="Cole o secret gerado no painel da SMPay"
+                      className="font-mono text-[11px]"
+                    />
+                  </div>
+                  <Button type="submit" variant="secondary" className="self-end">
+                    Salvar
+                  </Button>
+                </form>
               </div>
             </div>
           </Card>

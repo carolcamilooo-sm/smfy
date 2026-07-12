@@ -62,3 +62,15 @@ export async function regenerateToken(formData: FormData) {
   });
   revalidatePath("/dashboard/produtores");
 }
+
+export async function updateSmpaySecret(formData: FormData) {
+  await requireAdmin();
+
+  const producerId = String(formData.get("producerId"));
+  const secret = String(formData.get("smpayWebhookSecret") ?? "").trim();
+  await prisma.producer.update({
+    where: { id: producerId },
+    data: { smpayWebhookSecret: secret || null },
+  });
+  revalidatePath("/dashboard/produtores");
+}
