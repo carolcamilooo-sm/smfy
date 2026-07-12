@@ -39,9 +39,13 @@ export async function addProduct(formData: FormData) {
 
   const producerId = String(formData.get("producerId"));
   const name = String(formData.get("name") ?? "").trim();
+  const sigla = String(formData.get("sigla") ?? "").trim();
+  const codigo = String(formData.get("codigo") ?? "").trim();
   if (!name) throw new Error("Informe o nome do produto.");
 
-  await prisma.product.create({ data: { producerId, name } });
+  await prisma.product.create({
+    data: { producerId, name, sigla: sigla || null, codigo: codigo || null },
+  });
   revalidatePath("/dashboard/produtores");
 }
 
@@ -49,6 +53,35 @@ export async function removeProduct(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("id"));
   await prisma.product.delete({ where: { id } });
+  revalidatePath("/dashboard/produtores");
+}
+
+export async function toggleProductActive(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id"));
+  const product = await prisma.product.findUniqueOrThrow({ where: { id } });
+  await prisma.product.update({ where: { id }, data: { active: !product.active } });
+  revalidatePath("/dashboard/produtores");
+}
+
+/** Per-operator gate for a product: which categories (aprovados/pendentes) they're allowed to receive. */
+export async function updateProductAccess(formData: FormData) {
+  await requireAdmin();
+
+  const productId = String(formData.get("productId"));
+  const operatorId = String(formData.get("operatorId"));
+  const allowApproved = formData.get("allowApproved") === "on";
+  const allowPending = formData.get("allowPending") === "on";
+
+  if (!allowApproved && !allowPending) {
+    await prisma.productAccess.deleteMany({ where: { productId, operatorId } });
+  } else {
+    await prisma.productAccess.upsert({
+      where: { productId_operatorId: { productId, operatorId } },
+      update: { allowApproved, allowPending },
+      create: { productId, operatorId, allowApproved, allowPending },
+    });
+  }
   revalidatePath("/dashboard/produtores");
 }
 

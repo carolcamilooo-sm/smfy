@@ -65,6 +65,12 @@ export async function POST(
   const dbGateway = GATEWAY_DB_VALUE[gateway];
   const phone = normalizePhone(normalized.phone);
 
+  const matchedProduct = normalized.product
+    ? await prisma.product.findFirst({
+        where: { producerId: producer.id, name: { equals: normalized.product, mode: "insensitive" } },
+      })
+    : null;
+
   const existing = await prisma.lead.findUnique({
     where: {
       producerId_gateway_externalId: {
@@ -91,6 +97,7 @@ export async function POST(
         phone,
         email: normalized.email,
         product: normalized.product,
+        productId: matchedProduct?.id ?? null,
         value: normalized.value,
         paymentStatus: normalized.paymentStatus,
         rawPayload,
@@ -109,6 +116,7 @@ export async function POST(
       phone,
       email: normalized.email,
       product: normalized.product,
+      productId: matchedProduct?.id ?? null,
       value: normalized.value,
       paymentStatus: normalized.paymentStatus,
       rawPayload,

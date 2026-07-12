@@ -114,14 +114,16 @@ export default async function OperadoresPage() {
           esteja online e não esteja ocioso há mais de 15 minutos.
         </p>
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_5rem_5rem_5rem_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
+          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_5rem_5rem_5rem_auto_auto_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
             <div className="text-xs text-secondary">Nome</div>
             <div className="text-xs text-secondary">E-mail</div>
             <div className="text-xs text-secondary">Status</div>
             <div className="text-xs text-secondary">% Aprovados</div>
             <div className="text-xs text-secondary">% Pendentes</div>
             <div className="text-xs text-secondary">% Carrinhos</div>
-            <div className="text-xs text-secondary">Ativo</div>
+            <div className="text-xs text-secondary">Distrib. ativa</div>
+            <div className="text-xs text-secondary">Prioridade</div>
+            <div className="text-xs text-secondary">Atendente ativo</div>
             <div />
 
             {operators.map((op) => (
@@ -177,6 +179,22 @@ export default async function OperadoresPage() {
                   />
                 </div>
                 <div className="border-t border-border py-2">
+                  <input
+                    type="checkbox"
+                    name="priority"
+                    defaultChecked={op.priority}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <div className="border-t border-border py-2">
+                  <input
+                    type="checkbox"
+                    name="userActive"
+                    defaultChecked={op.active}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <div className="border-t border-border py-2">
                   <Button type="submit" variant="secondary">
                     Salvar
                   </Button>
@@ -185,7 +203,7 @@ export default async function OperadoresPage() {
             ))}
 
             {operators.length === 0 && (
-              <div className="col-span-8 py-4 text-center text-secondary">
+              <div className="col-span-10 py-4 text-center text-secondary">
                 Nenhum operador cadastrado ainda.
               </div>
             )}

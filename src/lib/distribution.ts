@@ -52,28 +52,59 @@ function paymentStatusesForCategory(category: DistributionCategory): PaymentStat
 }
 
 /**
+ * If a product has any explicit ProductAccess grants for this category,
+ * only the granted operators are eligible — otherwise every operator is
+ * (backward compatible: a product nobody configured behaves like before).
+ * Declined/"carrinho" leads aren't gated by product, only approved/pending.
+ */
+async function allowedOperatorIdsForProduct(
+  productId: string | null | undefined,
+  category: DistributionCategory
+): Promise<Set<string> | null> {
+  if (!productId || category === "declined") return null;
+
+  const grants = await prisma.productAccess.findMany({
+    where: {
+      productId,
+      ...(category === "approved" ? { allowApproved: true } : { allowPending: true }),
+    },
+    select: { operatorId: true },
+  });
+  if (grants.length === 0) return null;
+  return new Set(grants.map((g) => g.operatorId));
+}
+
+/**
  * Picks the eligible operator whose today-assigned/weight ratio is lowest
  * *within the lead's payment category*, so each category (Aprovados/
  * Pendentes/Carrinhos) converges independently on the proportions the admin
  * configured, even though each invocation is stateless (serverless-safe
- * weighted round robin).
+ * weighted round robin). Operators marked "priority" are always preferred
+ * over non-priority ones when both are eligible.
  */
-export async function pickOperatorForLead(paymentStatus: PaymentStatus): Promise<User | null> {
+export async function pickOperatorForLead(
+  paymentStatus: PaymentStatus,
+  productId?: string | null
+): Promise<User | null> {
   const category = categoryForPaymentStatus(paymentStatus);
+  const allowedIds = await allowedOperatorIdsForProduct(productId, category);
 
   const operators = await prisma.user.findMany({
     where: {
       role: "OPERATOR",
       status: "ONLINE",
+      active: true,
+      ...(allowedIds ? { id: { in: Array.from(allowedIds) } } : {}),
       distributionRule: distributionRuleFilterForCategory(category),
     },
     include: { distributionRule: true },
   });
 
-  const eligible = operators.filter(
-    (op) => getEffectiveStatus(op) === "ONLINE"
-  );
+  let eligible = operators.filter((op) => getEffectiveStatus(op) === "ONLINE");
   if (eligible.length === 0) return null;
+
+  const priorityEligible = eligible.filter((op) => op.priority);
+  if (priorityEligible.length > 0) eligible = priorityEligible;
 
   const todayStart = startOfToday();
   const counts = await prisma.lead.groupBy({
@@ -106,7 +137,7 @@ export async function pickOperatorForLead(paymentStatus: PaymentStatus): Promise
 export async function assignLead(
   lead: Lead
 ): Promise<Lead & { assignedOperator: { name: string } | null }> {
-  const operator = await pickOperatorForLead(lead.paymentStatus);
+  const operator = await pickOperatorForLead(lead.paymentStatus, lead.productId);
 
   if (!operator) {
     return prisma.lead.update({
@@ -150,7 +181,7 @@ export async function rescueWaitingLeads(): Promise<void> {
   });
 
   for (const lead of waiting) {
-    const operator = await pickOperatorForLead(lead.paymentStatus);
+    const operator = await pickOperatorForLead(lead.paymentStatus, lead.productId);
     if (!operator) break;
     await assignLead(lead);
   }

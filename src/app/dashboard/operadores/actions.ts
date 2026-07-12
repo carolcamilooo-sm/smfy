@@ -61,12 +61,20 @@ export async function updateDistribution(formData: FormData) {
   const weightPending = clampPercent(formData.get("weightPending"));
   const weightDeclined = clampPercent(formData.get("weightDeclined"));
   const active = formData.get("active") === "on";
+  const userActive = formData.get("userActive") === "on";
+  const priority = formData.get("priority") === "on";
 
-  await prisma.distributionRule.upsert({
-    where: { operatorId },
-    update: { weightApproved, weightPending, weightDeclined, active },
-    create: { operatorId, weightApproved, weightPending, weightDeclined, active },
-  });
+  await prisma.$transaction([
+    prisma.distributionRule.upsert({
+      where: { operatorId },
+      update: { weightApproved, weightPending, weightDeclined, active },
+      create: { operatorId, weightApproved, weightPending, weightDeclined, active },
+    }),
+    prisma.user.update({
+      where: { id: operatorId },
+      data: { active: userActive, priority },
+    }),
+  ]);
 
   revalidatePath("/dashboard/operadores");
 }

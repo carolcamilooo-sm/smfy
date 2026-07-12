@@ -9,6 +9,8 @@ import {
   createProducer,
   addProduct,
   removeProduct,
+  toggleProductActive,
+  updateProductAccess,
   regenerateToken,
   updateGatewaySecret,
   removeProducer,
@@ -19,13 +21,23 @@ export const dynamic = "force-dynamic";
 
 export default async function ProdutoresPage() {
   const baseUrl = await getBaseUrl();
-  const allProducers = await prisma.producer.findMany({
-    include: {
-      products: { orderBy: { createdAt: "asc" } },
-      _count: { select: { leads: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const [allProducers, operators] = await Promise.all([
+    prisma.producer.findMany({
+      include: {
+        products: {
+          orderBy: { createdAt: "asc" },
+          include: { accesses: true },
+        },
+        _count: { select: { leads: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.user.findMany({
+      where: { role: "OPERATOR" },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
   const producers = allProducers.filter((p) => p.active);
   const archivedProducers = allProducers.filter((p) => !p.active);
 
@@ -64,9 +76,12 @@ export default async function ProdutoresPage() {
           <ProducerCard
             key={producer.id}
             producer={producer}
+            operators={operators}
             baseUrl={baseUrl}
             addProduct={addProduct}
             removeProduct={removeProduct}
+            toggleProductActive={toggleProductActive}
+            updateProductAccess={updateProductAccess}
             regenerateToken={regenerateToken}
             updateGatewaySecret={updateGatewaySecret}
             removeProducer={removeProducer}

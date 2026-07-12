@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/copy-button";
 import { ConfirmForm } from "@/components/confirm-form";
 import { cn } from "@/lib/utils";
+
+function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString("pt-BR");
+}
 
 const GATEWAYS = [
   { key: "kiwify", label: "Kiwify", secretField: "kiwifyWebhookSecret", secretLabel: "Secret do webhook Kiwify" },
@@ -21,6 +26,27 @@ const GATEWAYS = [
   { key: "smpay", label: "SMPay", secretField: "smpayWebhookSecret", secretLabel: "Secret do webhook SMPay" },
 ] as const;
 
+type ProductAccess = {
+  operatorId: string;
+  allowApproved: boolean;
+  allowPending: boolean;
+};
+
+type Product = {
+  id: string;
+  name: string;
+  sigla: string | null;
+  codigo: string | null;
+  active: boolean;
+  createdAt: Date | string;
+  accesses: ProductAccess[];
+};
+
+type Operator = {
+  id: string;
+  name: string;
+};
+
 type Producer = {
   id: string;
   name: string;
@@ -28,29 +54,36 @@ type Producer = {
   smpayWebhookSecret: string | null;
   kiwifyWebhookSecret: string | null;
   perfectpayToken: string | null;
-  products: { id: string; name: string }[];
+  products: Product[];
   _count: { leads: number };
 };
 
 export function ProducerCard({
   producer,
+  operators,
   baseUrl,
   addProduct,
   removeProduct,
+  toggleProductActive,
+  updateProductAccess,
   regenerateToken,
   updateGatewaySecret,
   removeProducer,
 }: {
   producer: Producer;
+  operators: Operator[];
   baseUrl: string;
   addProduct: (formData: FormData) => void;
   removeProduct: (formData: FormData) => void;
+  toggleProductActive: (formData: FormData) => void;
+  updateProductAccess: (formData: FormData) => void;
   regenerateToken: (formData: FormData) => void;
   updateGatewaySecret: (formData: FormData) => void;
   removeProducer: (formData: FormData) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>("kiwify");
+  const [accessProductId, setAccessProductId] = useState<string | null>(null);
 
   const gateway = GATEWAYS.find((g) => g.key === activeGateway)!;
   const url = `${baseUrl}/api/webhooks/${gateway.key}?token=${producer.webhookToken}`;
@@ -100,33 +133,141 @@ export function ProducerCard({
       </div>
 
       {expanded && (
-        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mt-5 space-y-4">
           <div className="rounded-lg border border-border bg-app p-4">
             <p className="mb-3 text-xs font-semibold text-secondary">Produtos</p>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              {producer.products.map((product) => (
-                <div
-                  key={product.id}
-                  className="inline-flex items-center gap-2 rounded-full bg-accent/15 py-1 pl-3 pr-1.5 text-xs text-accent"
-                >
-                  {product.name}
-                  <form action={removeProduct} className="contents">
-                    <input type="hidden" name="id" value={product.id} />
-                    <button type="submit" className="text-accent/70 hover:text-danger" aria-label="Remover produto">
-                      ×
-                    </button>
-                  </form>
-                </div>
-              ))}
-              {producer.products.length === 0 && (
-                <span className="text-xs text-muted">Nenhum produto cadastrado</span>
-              )}
-            </div>
-            <form action={addProduct} className="flex gap-2">
+
+            {producer.products.length > 0 && (
+              <div className="mb-4 overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-xs text-secondary">
+                      <th className="pb-2 pr-3">Nome</th>
+                      <th className="pb-2 pr-3">Sigla</th>
+                      <th className="pb-2 pr-3">Código</th>
+                      <th className="pb-2 pr-3">Situação</th>
+                      <th className="pb-2 pr-3">Criado em</th>
+                      <th className="pb-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {producer.products.map((product) => (
+                      <Fragment key={product.id}>
+                        <tr className="border-t border-border">
+                          <td className="py-2 pr-3 text-primary">{product.name}</td>
+                          <td className="py-2 pr-3 font-mono text-secondary">{product.sigla ?? "-"}</td>
+                          <td className="py-2 pr-3 font-mono text-secondary">{product.codigo ?? "-"}</td>
+                          <td className="py-2 pr-3">
+                            <Badge tone={product.active ? "green" : "gray"}>
+                              {product.active ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </td>
+                          <td className="py-2 pr-3 text-xs text-muted">{formatDate(product.createdAt)}</td>
+                          <td className="py-2">
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAccessProductId((v) => (v === product.id ? null : product.id))
+                                }
+                                className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-secondary hover:text-primary"
+                              >
+                                {accessProductId === product.id ? "Fechar" : "Acesso"}
+                              </button>
+                              <form action={toggleProductActive}>
+                                <input type="hidden" name="id" value={product.id} />
+                                <button
+                                  type="submit"
+                                  className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-secondary hover:text-primary"
+                                >
+                                  {product.active ? "Desativar" : "Ativar"}
+                                </button>
+                              </form>
+                              <form action={removeProduct}>
+                                <input type="hidden" name="id" value={product.id} />
+                                <button
+                                  type="submit"
+                                  className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-secondary hover:text-danger"
+                                >
+                                  Remover
+                                </button>
+                              </form>
+                            </div>
+                          </td>
+                        </tr>
+                        {accessProductId === product.id && (
+                          <tr className="border-t border-border bg-surface/60">
+                            <td colSpan={6} className="p-3">
+                              <p className="mb-2 text-xs font-semibold text-secondary">
+                                Liberar leads desse produto por atendente
+                              </p>
+                              {operators.length === 0 ? (
+                                <p className="text-xs text-muted">Nenhum atendente cadastrado ainda.</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {operators.map((op) => {
+                                    const access = product.accesses.find((a) => a.operatorId === op.id);
+                                    return (
+                                      <form
+                                        key={op.id}
+                                        action={updateProductAccess}
+                                        className="flex items-center gap-4 rounded-md border border-border bg-app px-3 py-2"
+                                      >
+                                        <input type="hidden" name="productId" value={product.id} />
+                                        <input type="hidden" name="operatorId" value={op.id} />
+                                        <span className="w-40 shrink-0 truncate text-xs text-primary">
+                                          {op.name}
+                                        </span>
+                                        <label className="flex items-center gap-1.5 text-xs text-secondary">
+                                          <input
+                                            type="checkbox"
+                                            name="allowApproved"
+                                            defaultChecked={access?.allowApproved ?? false}
+                                            className="h-3.5 w-3.5"
+                                          />
+                                          Aprovados
+                                        </label>
+                                        <label className="flex items-center gap-1.5 text-xs text-secondary">
+                                          <input
+                                            type="checkbox"
+                                            name="allowPending"
+                                            defaultChecked={access?.allowPending ?? false}
+                                            className="h-3.5 w-3.5"
+                                          />
+                                          Pendentes
+                                        </label>
+                                        <Button type="submit" variant="secondary" className="ml-auto py-1 text-xs">
+                                          Salvar
+                                        </Button>
+                                      </form>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <p className="mt-2 text-[11px] text-muted">
+                                Sem nenhum atendente liberado, o produto usa a distribuição geral (%
+                                por atendente) normalmente.
+                              </p>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {producer.products.length === 0 && (
+              <p className="mb-4 text-xs text-muted">Nenhum produto cadastrado</p>
+            )}
+
+            <form action={addProduct} className="grid grid-cols-1 gap-2 sm:grid-cols-[1.4fr_0.8fr_0.8fr_auto]">
               <input type="hidden" name="producerId" value={producer.id} />
-              <Input name="name" placeholder="Adicionar produto" />
+              <Input name="name" placeholder="Nome do produto" required />
+              <Input name="sigla" placeholder="Sigla" />
+              <Input name="codigo" placeholder="Código" />
               <Button type="submit" variant="secondary">
-                Adicionar
+                Cadastrar produto
               </Button>
             </form>
           </div>

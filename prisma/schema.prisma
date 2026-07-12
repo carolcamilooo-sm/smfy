@@ -56,6 +56,8 @@ model User {
   role           Role             @default(OPERATOR)
   approvalStatus ApprovalStatus   @default(APPROVED)
   status         OperatorStatus   @default(OFFLINE)
+  active         Boolean          @default(true)
+  priority       Boolean          @default(false)
   notifySound       Boolean       @default(true)
   notifyIdleWarning Boolean       @default(true)
   lastActivityAt DateTime         @default(now())
@@ -64,6 +66,7 @@ model User {
   distributionRule DistributionRule?
   assignedLeads     Lead[]          @relation("AssignedLeads")
   leadEvents        LeadEvent[]
+  productAccesses   ProductAccess[]
 
   @@map("users")
 }
@@ -99,13 +102,32 @@ model Producer {
 model Product {
   id         String   @id @default(cuid())
   name       String
+  sigla      String?
+  codigo     String?
   producerId String
   producer   Producer @relation(fields: [producerId], references: [id], onDelete: Cascade)
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
 
+  accesses ProductAccess[]
+  leads    Lead[]
+
   @@index([producerId])
   @@map("products")
+}
+
+/** Per-product, per-operator gate: which categories of that product's leads an operator is allowed to receive. */
+model ProductAccess {
+  id            String  @id @default(cuid())
+  productId     String
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  operatorId    String
+  operator      User    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  allowApproved Boolean @default(false)
+  allowPending  Boolean @default(false)
+
+  @@unique([productId, operatorId])
+  @@map("product_access")
 }
 
 model Lead {
@@ -118,6 +140,8 @@ model Lead {
   phone              String
   email              String?
   product             String?
+  productId           String?
+  productRef          Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
   value               Decimal?      @db.Decimal(10, 2)
   paymentStatus       PaymentStatus
   serviceStatus       ServiceStatus @default(WAITING)
