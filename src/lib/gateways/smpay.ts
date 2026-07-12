@@ -97,8 +97,15 @@ export const smpayAdapter: GatewayAdapter = {
       return false;
     }
 
-    const expected = createHmac("sha256", secret).update(canonicalJSON(parsed)).digest("hex");
+    const canonical = canonicalJSON(parsed);
+    const expected = createHmac("sha256", secret).update(canonical).digest("hex");
     const provided = signatureHeader.replace(/^sha256=/, "");
+
+    if (expected !== provided) {
+      console.warn(`[webhook:smpay] DEBUG rawBody: ${rawBody}`);
+      console.warn(`[webhook:smpay] DEBUG canonical: ${canonical}`);
+      console.warn(`[webhook:smpay] DEBUG signatureHeader raw: "${signatureHeader}"`);
+    }
 
     let a: Buffer;
     let b: Buffer;
