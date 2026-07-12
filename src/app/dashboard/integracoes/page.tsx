@@ -13,7 +13,7 @@ const GATEWAYS = [
     name: "PerfectPay",
     status: "complete" as const,
     description:
-      "Parser completo: status da venda (aprovado, pendente, recusado, cancelado, carrinho abandonado etc.), cliente, produto e valor são lidos automaticamente. Sem verificação de assinatura — a PerfectPay não documenta esse mecanismo.",
+      "Parser completo: status da venda (aprovado, pendente, recusado, cancelado, carrinho abandonado etc.), cliente, produto e valor são lidos automaticamente. Suporta verificação por public token, configurável por produtor em Produtores.",
   },
   {
     name: "Disrupty",

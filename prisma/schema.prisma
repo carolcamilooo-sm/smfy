@@ -86,6 +86,7 @@ model Producer {
   webhookToken        String   @unique
   smpayWebhookSecret  String?
   kiwifyWebhookSecret String?
+  perfectpayToken     String?
   active              Boolean  @default(true)
   createdAt           DateTime @default(now())
 

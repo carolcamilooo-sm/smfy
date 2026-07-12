@@ -1,6 +1,8 @@
+import { timingSafeEqual } from "node:crypto";
 import type { GatewayAdapter, NormalizedLead, NormalizedPaymentStatus } from "./types";
 
 type PerfectPayPayload = {
+  token?: string;
   code?: string;
   sale_amount?: number;
   sale_status_enum?: number;
@@ -60,5 +62,23 @@ export const perfectpayAdapter: GatewayAdapter = {
       paymentStatus,
     };
     return lead;
+  },
+
+  /** PerfectPay has no HMAC scheme — it just echoes a static "public token" in the payload body. */
+  verifySignature(rawBody, _headers, _url, producerSecret) {
+    if (!producerSecret) return true; // skipped until a token is configured
+
+    let data: PerfectPayPayload;
+    try {
+      data = JSON.parse(rawBody) as PerfectPayPayload;
+    } catch {
+      return false;
+    }
+    if (!data.token) return false;
+
+    const a = Buffer.from(data.token);
+    const b = Buffer.from(producerSecret);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
   },
 };

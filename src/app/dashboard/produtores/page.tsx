@@ -18,6 +18,7 @@ import {
 
 const SECRET_FIELDS = [
   { field: "kiwifyWebhookSecret", label: "Secret do webhook Kiwify (um por produtor)" },
+  { field: "perfectpayToken", label: "Public token da PerfectPay (um por produtor)" },
   { field: "smpayWebhookSecret", label: "Secret do webhook SMPay (um por produtor)" },
 ] as const;
 

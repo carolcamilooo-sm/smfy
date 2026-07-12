@@ -24,10 +24,11 @@ export const GATEWAY_DB_VALUE: Record<GatewayKey, "KIWIFY" | "PERFECTPAY" | "DIS
   smpay: "SMPAY",
 };
 
-/** Only gateways with a documented per-webhook secret get a per-producer override field. */
+/** Only gateways with a documented per-webhook secret/token get a per-producer override field. */
 export const GATEWAY_SECRET_FIELD: Partial<
-  Record<GatewayKey, "smpayWebhookSecret" | "kiwifyWebhookSecret">
+  Record<GatewayKey, "smpayWebhookSecret" | "kiwifyWebhookSecret" | "perfectpayToken">
 > = {
   smpay: "smpayWebhookSecret",
   kiwify: "kiwifyWebhookSecret",
+  perfectpay: "perfectpayToken",
 };
