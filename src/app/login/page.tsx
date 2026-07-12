@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
-import { MascotCluster } from "./mascots";
 import { Logo } from "@/components/logo";
+import { SparklesCanvas } from "@/components/sparkles-canvas";
 
 const ERROR_MESSAGES: Record<string, string> = {
   pending_approval:
@@ -21,6 +21,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  function onCardMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const el = cardRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--gx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--gy", `${e.clientY - r.top}px`);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -47,73 +56,56 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-app">
-      {/* Left: brand panel */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-app p-10 lg:flex">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app">
+      <SparklesCanvas density={7000} />
+
+      <div className="relative z-10 flex flex-col items-center px-6 py-14">
+        <Link href="/" className="mb-16 w-fit" style={{ animation: "fadeUp 0.6s ease-out both" }}>
+          <Logo className="text-4xl" />
+        </Link>
+
         <div
-          className="pointer-events-none absolute inset-0 opacity-60"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle, rgba(255,255,255,0.14) 1px, transparent 1px)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-
-        <div className="relative z-10">
-          <Logo className="text-2xl" />
-        </div>
-
-        <div className="relative z-10 pb-10">
-          <MascotCluster />
-        </div>
-
-        <div className="relative z-10 flex gap-4 text-xs text-muted">
-          <span>smfy.io</span>
-        </div>
-      </div>
-
-      {/* Right: form panel */}
-      <div className="flex w-full flex-col items-center justify-center bg-app px-6 py-12 lg:w-1/2">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 inline-flex rounded-full border border-border bg-surface p-1 text-sm">
-            <span className="rounded-full bg-accent px-4 py-1.5 font-medium text-app">
-              Entrar
-            </span>
-          </div>
-
-          <h1 className="text-2xl font-semibold text-primary">
-            Bem-vindo <span className="text-accent">de volta.</span>
+          ref={cardRef}
+          data-glow-card=""
+          onMouseMove={onCardMouseMove}
+          className="relative isolate w-full max-w-[400px] rounded-[20px] border border-border bg-surface/70 p-9 backdrop-blur-md"
+        >
+          <h1
+            className="mb-2.5 text-[32px] font-extrabold tracking-tight text-primary"
+            style={{ animation: "fadeUp 0.6s ease-out 0.1s both" }}
+          >
+            Bem-vindo de volta
           </h1>
-          <p className="mt-1 text-sm text-secondary">
-            Acesse seu hub de recuperação de vendas.
+          <p
+            className="mb-9 text-[15px] text-secondary"
+            style={{ animation: "fadeUp 0.6s ease-out 0.18s both" }}
+          >
+            Entre para acompanhar seus leads em tempo real.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-            <div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div style={{ animation: "fadeUp 0.6s ease-out 0.28s both" }}>
               <label
                 htmlFor="email"
-                className="mb-1.5 block text-xs font-medium tracking-wide text-secondary"
+                className="mb-2 block text-[13px] font-semibold text-secondary"
               >
-                EMAIL
+                E-mail
               </label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder="voce@empresa.com"
                 required
                 autoFocus
-                className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none"
+                className="w-full rounded-[10px] border border-border bg-app px-4 py-3.5 text-[15px] text-primary placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-xs font-medium tracking-wide text-secondary"
-              >
-                SENHA
+            <div style={{ animation: "fadeUp 0.6s ease-out 0.36s both" }}>
+              <label htmlFor="password" className="mb-2 block text-[13px] font-semibold text-secondary">
+                Senha
               </label>
               <div className="relative">
                 <input
@@ -121,8 +113,9 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
                   required
-                  className="w-full rounded-lg border border-border bg-surface px-4 py-3 pr-11 text-sm text-primary focus:border-accent focus:outline-none"
+                  className="w-full rounded-[10px] border border-border bg-app px-4 py-3.5 pr-11 text-[15px] text-primary focus:border-accent focus:outline-none"
                 />
                 <button
                   type="button"
@@ -143,16 +136,19 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-app transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ animation: "fadeUp 0.6s ease-out 0.48s both" }}
+              className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-accent px-4 py-3.5 text-[15px] font-bold text-app shadow-[0_8px_30px_oklch(0.6_0.25_300_/_0.4)] transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Entrando..." : "Entrar"}
-              {!loading && <span aria-hidden>→</span>}
             </button>
 
-            <p className="text-center text-xs text-muted">
+            <p
+              className="text-center text-sm text-secondary"
+              style={{ animation: "fadeUp 0.6s ease-out 0.54s both" }}
+            >
               Ainda não tem conta?{" "}
-              <Link href="/cadastro" className="text-accent hover:underline">
-                Cadastre-se
+              <Link href="/cadastro" className="font-semibold text-accent hover:underline">
+                Criar conta
               </Link>
             </p>
           </form>
