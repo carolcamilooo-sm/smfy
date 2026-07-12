@@ -1,5 +1,6 @@
 import type { GatewayAdapter } from "./types";
 import { kiwifyAdapter } from "./kiwify";
+import { smpayAdapter } from "./smpay";
 import { createGenericAdapter } from "./generic";
 
 export type GatewayKey = "kiwify" | "perfectpay" | "disrupty" | "smpay";
@@ -8,7 +9,7 @@ export const GATEWAY_ADAPTERS: Record<GatewayKey, GatewayAdapter> = {
   kiwify: kiwifyAdapter,
   perfectpay: createGenericAdapter("perfectpay"),
   disrupty: createGenericAdapter("disrupty"),
-  smpay: createGenericAdapter("smpay"),
+  smpay: smpayAdapter,
 };
 
 export function isGatewayKey(value: string): value is GatewayKey {

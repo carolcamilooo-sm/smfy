@@ -2,7 +2,7 @@ import type { GatewayAdapter, NormalizedLead, NormalizedPaymentStatus } from "./
 
 /**
  * Best-effort adapter for gateways whose webhook payload shape we haven't
- * confirmed yet (PerfectPay, Disrupty, SMPay). It tries the most common
+ * confirmed yet (PerfectPay, Disrupty). It tries the most common
  * field names used by Brazilian payment gateways. Swap this out for a
  * precise parser (like kiwify.ts) once a real sample payload is available —
  * the full raw payload is always stored on the Lead for reference.
