@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         q: params.get("q") ?? undefined,
         status: (() => {
           const status = params.get("status");
-          return status === "attended" || status === "assigned" || status === "waiting"
+          return status === "approved" || status === "pending" || status === "declined" || status === "other"
             ? status
             : undefined;
         })(),

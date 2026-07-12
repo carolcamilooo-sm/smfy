@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Todos os status" },
-  { value: "attended", label: "Atendido" },
-  { value: "assigned", label: "Em andamento" },
-  { value: "waiting", label: "Não atendido" },
+  { value: "approved", label: "Aprovado" },
+  { value: "pending", label: "Pendente" },
+  { value: "declined", label: "Carrinho" },
+  { value: "other", label: "Outro" },
 ];
 
 const PERIOD_OPTIONS = [
@@ -34,7 +35,9 @@ export default async function HistoricoPage({
 }) {
   const { q, status, period, producerId, page } = await searchParams;
   const statusParam =
-    status === "attended" || status === "assigned" || status === "waiting" ? status : undefined;
+    status === "approved" || status === "pending" || status === "declined" || status === "other"
+      ? status
+      : undefined;
 
   const [{ leads, total, page: currentPage, totalPages, range }, producers] = await Promise.all([
     getLeadsHistory({

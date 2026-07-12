@@ -448,11 +448,20 @@ export async function searchLeads(query: string) {
 
 const HISTORY_PAGE_SIZE = 20;
 
+export type LeadsSaleStatus = "approved" | "pending" | "declined" | "other";
+
 export type LeadsHistoryParams = DateRangeParams & {
   q?: string;
-  status?: "attended" | "assigned" | "waiting";
+  status?: LeadsSaleStatus;
   producerId?: string;
   page?: number;
+};
+
+const SALE_STATUS_MAP: Record<LeadsSaleStatus, Prisma.LeadWhereInput["paymentStatus"]> = {
+  approved: "APPROVED",
+  pending: "PENDING",
+  declined: "DECLINED",
+  other: "OTHER",
 };
 
 /** Shared by getLeadsHistory (paginated view) and the CSV export, so both filter identically. */
@@ -465,8 +474,7 @@ function buildLeadsHistoryWhere(
   };
 
   if (params.status) {
-    where.serviceStatus =
-      params.status === "attended" ? "ATTENDED" : params.status === "assigned" ? "ASSIGNED" : "WAITING";
+    where.paymentStatus = SALE_STATUS_MAP[params.status];
   }
 
   if (params.producerId) {
@@ -518,7 +526,7 @@ export async function getLeadsHistory(params: LeadsHistoryParams) {
 
 export type LeadsExportParams = DateRangeParams & {
   q?: string;
-  status?: "attended" | "assigned" | "waiting";
+  status?: LeadsSaleStatus;
   producerId?: string;
   limit: number;
 };
