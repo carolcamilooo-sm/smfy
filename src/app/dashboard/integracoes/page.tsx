@@ -23,9 +23,9 @@ const GATEWAYS = [
   },
   {
     name: "SMPay",
-    status: "generic" as const,
+    status: "complete" as const,
     description:
-      "Parser genérico: tenta reconhecer os campos mais comuns (id, status, cliente, telefone, produto, valor). Envie um payload de exemplo real para eu ajustar o parser específico.",
+      "Parser completo: eventos de venda, PIX, boleto, reembolso e assinatura são lidos automaticamente, com carrinho abandonado indo pro balde de recuperação. Suporta verificação de assinatura opcional (variável SMPAY_WEBHOOK_SECRET).",
   },
 ];
 
