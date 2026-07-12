@@ -1,0 +1,192 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/copy-button";
+import { ConfirmForm } from "@/components/confirm-form";
+import { cn } from "@/lib/utils";
+
+const GATEWAYS = [
+  { key: "kiwify", label: "Kiwify", secretField: "kiwifyWebhookSecret", secretLabel: "Secret do webhook Kiwify" },
+  {
+    key: "perfectpay",
+    label: "PerfectPay",
+    secretField: "perfectpayToken",
+    secretLabel: "Public token da PerfectPay",
+  },
+  { key: "disrupty", label: "Disrupty", secretField: null, secretLabel: null },
+  { key: "smpay", label: "SMPay", secretField: "smpayWebhookSecret", secretLabel: "Secret do webhook SMPay" },
+] as const;
+
+type Producer = {
+  id: string;
+  name: string;
+  webhookToken: string;
+  smpayWebhookSecret: string | null;
+  kiwifyWebhookSecret: string | null;
+  perfectpayToken: string | null;
+  products: { id: string; name: string }[];
+  _count: { leads: number };
+};
+
+export function ProducerCard({
+  producer,
+  baseUrl,
+  addProduct,
+  removeProduct,
+  regenerateToken,
+  updateGatewaySecret,
+  removeProducer,
+}: {
+  producer: Producer;
+  baseUrl: string;
+  addProduct: (formData: FormData) => void;
+  removeProduct: (formData: FormData) => void;
+  regenerateToken: (formData: FormData) => void;
+  updateGatewaySecret: (formData: FormData) => void;
+  removeProducer: (formData: FormData) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>("kiwify");
+
+  const gateway = GATEWAYS.find((g) => g.key === activeGateway)!;
+  const url = `${baseUrl}/api/webhooks/${gateway.key}?token=${producer.webhookToken}`;
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-4">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 items-start gap-2 text-left"
+        >
+          {expanded ? (
+            <ChevronDown size={18} className="mt-0.5 shrink-0 text-muted" />
+          ) : (
+            <ChevronRight size={18} className="mt-0.5 shrink-0 text-muted" />
+          )}
+          <div>
+            <h3 className="text-base font-bold text-primary">{producer.name}</h3>
+            <p className="mt-0.5 text-xs text-secondary">
+              <span className="font-mono font-semibold text-secondary">{producer._count.leads}</span>{" "}
+              leads recebidos · {producer.products.length} produto(s)
+            </p>
+          </div>
+        </button>
+        <div className="flex shrink-0 gap-2">
+          <form action={regenerateToken}>
+            <input type="hidden" name="producerId" value={producer.id} />
+            <Button type="submit" variant="secondary">
+              Gerar novo token
+            </Button>
+          </form>
+          <ConfirmForm
+            action={removeProducer}
+            confirmMessage={
+              producer._count.leads === 0
+                ? `Remover "${producer.name}" permanentemente? Essa ação não pode ser desfeita.`
+                : `"${producer.name}" tem ${producer._count.leads} lead(s) no histórico, então vai ser arquivado (não excluído) e sair da lista de produtores ativos. O webhook dele para de gerar leads novos. Continuar?`
+            }
+          >
+            <input type="hidden" name="producerId" value={producer.id} />
+            <Button type="submit" variant="danger">
+              Remover
+            </Button>
+          </ConfirmForm>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rounded-lg border border-border bg-app p-4">
+            <p className="mb-3 text-xs font-semibold text-secondary">Produtos</p>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {producer.products.map((product) => (
+                <div
+                  key={product.id}
+                  className="inline-flex items-center gap-2 rounded-full bg-accent/15 py-1 pl-3 pr-1.5 text-xs text-accent"
+                >
+                  {product.name}
+                  <form action={removeProduct} className="contents">
+                    <input type="hidden" name="id" value={product.id} />
+                    <button type="submit" className="text-accent/70 hover:text-danger" aria-label="Remover produto">
+                      ×
+                    </button>
+                  </form>
+                </div>
+              ))}
+              {producer.products.length === 0 && (
+                <span className="text-xs text-muted">Nenhum produto cadastrado</span>
+              )}
+            </div>
+            <form action={addProduct} className="flex gap-2">
+              <input type="hidden" name="producerId" value={producer.id} />
+              <Input name="name" placeholder="Adicionar produto" />
+              <Button type="submit" variant="secondary">
+                Adicionar
+              </Button>
+            </form>
+          </div>
+
+          <div className="rounded-lg border border-border bg-app p-4">
+            <p className="mb-3 text-xs font-semibold text-secondary">Webhook por gateway</p>
+
+            <div className="mb-3 flex flex-wrap gap-1.5 border-b border-border pb-3">
+              {GATEWAYS.map((g) => (
+                <button
+                  key={g.key}
+                  type="button"
+                  onClick={() => setActiveGateway(g.key)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                    activeGateway === g.key
+                      ? "bg-accent text-app"
+                      : "bg-surface text-secondary hover:text-primary"
+                  )}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+
+            <span className="mb-1 block text-[11px] text-muted">URL do webhook</span>
+            <div className="flex gap-1.5">
+              <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-surface px-2.5 py-2 font-mono text-[11px] text-secondary">
+                {url}
+              </code>
+              <CopyButton value={url} />
+            </div>
+
+            {gateway.secretField && (
+              <form
+                key={gateway.secretField}
+                action={updateGatewaySecret}
+                className="mt-4 flex gap-1.5 border-t border-border pt-3.5"
+              >
+                <input type="hidden" name="producerId" value={producer.id} />
+                <input type="hidden" name="field" value={gateway.secretField} />
+                <div className="min-w-0 flex-1">
+                  <span className="mb-1 block text-[11px] text-muted">
+                    {gateway.secretLabel} (um por produtor)
+                  </span>
+                  <Input
+                    name="secret"
+                    defaultValue={producer[gateway.secretField] ?? ""}
+                    placeholder="Cole o secret/token gerado no painel do gateway"
+                    className="font-mono text-[11px]"
+                  />
+                </div>
+                <Button type="submit" variant="secondary" className="self-end">
+                  Salvar
+                </Button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
