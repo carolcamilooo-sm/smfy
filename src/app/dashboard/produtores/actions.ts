@@ -63,14 +63,22 @@ export async function regenerateToken(formData: FormData) {
   revalidatePath("/dashboard/produtores");
 }
 
-export async function updateSmpaySecret(formData: FormData) {
+const SECRET_FIELDS = ["smpayWebhookSecret", "kiwifyWebhookSecret"] as const;
+type SecretField = (typeof SECRET_FIELDS)[number];
+
+export async function updateGatewaySecret(formData: FormData) {
   await requireAdmin();
 
   const producerId = String(formData.get("producerId"));
-  const secret = String(formData.get("smpayWebhookSecret") ?? "").trim();
+  const field = String(formData.get("field"));
+  if (!SECRET_FIELDS.includes(field as SecretField)) {
+    throw new Error("campo de secret inválido");
+  }
+  const secret = String(formData.get("secret") ?? "").trim();
+
   await prisma.producer.update({
     where: { id: producerId },
-    data: { smpayWebhookSecret: secret || null },
+    data: { [field as SecretField]: secret || null },
   });
   revalidatePath("/dashboard/produtores");
 }

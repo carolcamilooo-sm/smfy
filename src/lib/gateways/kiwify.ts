@@ -56,9 +56,9 @@ export const kiwifyAdapter: GatewayAdapter = {
     return lead;
   },
 
-  verifySignature(rawBody, _headers, url) {
-    const secret = process.env.KIWIFY_WEBHOOK_SECRET;
-    if (!secret) return true; // signature check skipped until secret is configured
+  verifySignature(rawBody, _headers, url, producerSecret) {
+    const secret = producerSecret || process.env.KIWIFY_WEBHOOK_SECRET;
+    if (!secret) return true; // signature check skipped until a secret is configured
 
     const signature = url.searchParams.get("signature");
     if (!signature) return false;

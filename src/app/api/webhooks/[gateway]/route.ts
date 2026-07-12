@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { GATEWAY_ADAPTERS, GATEWAY_DB_VALUE, isGatewayKey } from "@/lib/gateways";
+import { GATEWAY_ADAPTERS, GATEWAY_DB_VALUE, GATEWAY_SECRET_FIELD, isGatewayKey } from "@/lib/gateways";
 import { assignLead } from "@/lib/distribution";
 import { notifyAdmin, notifyOperator, EVENTS } from "@/lib/realtime";
 import { normalizePhone } from "@/lib/phone";
@@ -42,12 +42,9 @@ export async function POST(
   const adapter = GATEWAY_ADAPTERS[gateway];
 
   if (adapter.verifySignature) {
-    const valid = adapter.verifySignature(
-      rawBody,
-      request.headers,
-      request.nextUrl,
-      producer.smpayWebhookSecret
-    );
+    const secretField = GATEWAY_SECRET_FIELD[gateway];
+    const producerSecret = secretField ? producer[secretField] : undefined;
+    const valid = adapter.verifySignature(rawBody, request.headers, request.nextUrl, producerSecret);
     if (!valid) {
       return NextResponse.json({ error: "invalid signature" }, { status: 401 });
     }

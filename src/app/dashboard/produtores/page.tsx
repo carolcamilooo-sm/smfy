@@ -11,10 +11,15 @@ import {
   addProduct,
   removeProduct,
   regenerateToken,
-  updateSmpaySecret,
+  updateGatewaySecret,
   removeProducer,
   reactivateProducer,
 } from "./actions";
+
+const SECRET_FIELDS = [
+  { field: "kiwifyWebhookSecret", label: "Secret do webhook Kiwify (um por produtor)" },
+  { field: "smpayWebhookSecret", label: "Secret do webhook SMPay (um por produtor)" },
+] as const;
 
 export const dynamic = "force-dynamic";
 
@@ -168,26 +173,28 @@ export default async function ProdutoresPage() {
                   })}
                 </div>
 
-                <form
-                  action={updateSmpaySecret}
-                  className="mt-4 flex gap-1.5 border-t border-border pt-3.5"
-                >
-                  <input type="hidden" name="producerId" value={producer.id} />
-                  <div className="min-w-0 flex-1">
-                    <span className="mb-1 block text-[11px] text-muted">
-                      Secret do webhook SMPay (um por produtor)
-                    </span>
-                    <Input
-                      name="smpayWebhookSecret"
-                      defaultValue={producer.smpayWebhookSecret ?? ""}
-                      placeholder="Cole o secret gerado no painel da SMPay"
-                      className="font-mono text-[11px]"
-                    />
-                  </div>
-                  <Button type="submit" variant="secondary" className="self-end">
-                    Salvar
-                  </Button>
-                </form>
+                {SECRET_FIELDS.map(({ field, label }) => (
+                  <form
+                    key={field}
+                    action={updateGatewaySecret}
+                    className="mt-4 flex gap-1.5 border-t border-border pt-3.5"
+                  >
+                    <input type="hidden" name="producerId" value={producer.id} />
+                    <input type="hidden" name="field" value={field} />
+                    <div className="min-w-0 flex-1">
+                      <span className="mb-1 block text-[11px] text-muted">{label}</span>
+                      <Input
+                        name="secret"
+                        defaultValue={producer[field] ?? ""}
+                        placeholder="Cole o secret gerado no painel do gateway"
+                        className="font-mono text-[11px]"
+                      />
+                    </div>
+                    <Button type="submit" variant="secondary" className="self-end">
+                      Salvar
+                    </Button>
+                  </form>
+                ))}
               </div>
             </div>
           </Card>
