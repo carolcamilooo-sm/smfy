@@ -228,6 +228,12 @@ export function OperatorPanel({
                   <option value="PENDING">
                     Pendente ({initialQueue.filter((l) => l.paymentStatus === "PENDING").length})
                   </option>
+                  <option value="DECLINED">
+                    Recusado ({initialQueue.filter((l) => l.paymentStatus === "DECLINED").length})
+                  </option>
+                  <option value="OTHER">
+                    Outro ({initialQueue.filter((l) => l.paymentStatus === "OTHER").length})
+                  </option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
