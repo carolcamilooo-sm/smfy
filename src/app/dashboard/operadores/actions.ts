@@ -2,15 +2,8 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
-    throw new Error("unauthorized");
-  }
-}
+import { requireDashboardAccess } from "@/lib/access";
 
 /**
  * Admin-initiated version of the /cadastro self-signup: skips the
@@ -19,7 +12,7 @@ async function requireAdmin() {
  * operator can start receiving leads without a second manual step.
  */
 export async function createOperator(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -60,7 +53,7 @@ export async function createOperator(formData: FormData) {
 }
 
 export async function approveOperator(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const operatorId = String(formData.get("operatorId"));
 
@@ -85,7 +78,7 @@ export async function approveOperator(formData: FormData) {
 }
 
 export async function rejectOperator(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const operatorId = String(formData.get("operatorId"));
 
@@ -102,7 +95,7 @@ function clampPercent(value: FormDataEntryValue | null) {
 }
 
 export async function updateDistribution(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const operatorId = String(formData.get("operatorId"));
   const weightApproved = clampPercent(formData.get("weightApproved"));

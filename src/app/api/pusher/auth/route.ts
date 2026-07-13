@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { canAccessDashboard } from "@/lib/access";
 import { pusherServer, CHANNELS } from "@/lib/realtime";
 
 export async function POST(request: NextRequest) {
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
   const socketId = formData.get("socket_id") as string;
   const channel = formData.get("channel_name") as string;
 
-  if (channel === CHANNELS.admin && session.user.role !== "ADMIN") {
+  if (channel === CHANNELS.admin && !canAccessDashboard(session.user.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

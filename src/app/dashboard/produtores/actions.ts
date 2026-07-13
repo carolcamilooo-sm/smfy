@@ -2,22 +2,15 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
-    throw new Error("unauthorized");
-  }
-}
+import { requireDashboardAccess } from "@/lib/access";
 
 function generateToken() {
   return randomBytes(16).toString("hex");
 }
 
 export async function createProducer(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const name = String(formData.get("name") ?? "").trim();
   const productName = String(formData.get("productName") ?? "").trim();
@@ -35,7 +28,7 @@ export async function createProducer(formData: FormData) {
 }
 
 export async function addProduct(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
   const name = String(formData.get("name") ?? "").trim();
@@ -50,14 +43,14 @@ export async function addProduct(formData: FormData) {
 }
 
 export async function removeProduct(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
   const id = String(formData.get("id"));
   await prisma.product.delete({ where: { id } });
   revalidatePath("/dashboard/produtores");
 }
 
 export async function toggleProductActive(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
   const id = String(formData.get("id"));
   const product = await prisma.product.findUniqueOrThrow({ where: { id } });
   await prisma.product.update({ where: { id }, data: { active: !product.active } });
@@ -66,7 +59,7 @@ export async function toggleProductActive(formData: FormData) {
 
 /** Per-operator gate for a product: which categories (aprovados/pendentes) they're allowed to receive. */
 export async function updateProductAccess(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const productId = String(formData.get("productId"));
   const operatorId = String(formData.get("operatorId"));
@@ -86,7 +79,7 @@ export async function updateProductAccess(formData: FormData) {
 }
 
 export async function regenerateToken(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
   await prisma.producer.update({
@@ -105,7 +98,7 @@ const SECRET_FIELDS = [
 type SecretField = (typeof SECRET_FIELDS)[number];
 
 export async function updateGatewaySecret(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
   const field = String(formData.get("field"));
@@ -129,7 +122,7 @@ const GATEWAY_KEYS = ["kiwify", "perfectpay", "disrupty", "smpay", "payt"] as co
  * so no revalidatePath (would refetch the whole page on every tab click).
  */
 export async function setLastWebhookGateway(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
   const gateway = String(formData.get("gateway"));
@@ -148,7 +141,7 @@ export async function setLastWebhookGateway(formData: FormData) {
  * Only producers with zero leads are actually erased.
  */
 export async function removeProducer(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
   const leadCount = await prisma.lead.count({ where: { producerId } });
@@ -163,7 +156,7 @@ export async function removeProducer(formData: FormData) {
 }
 
 export async function reactivateProducer(formData: FormData) {
-  await requireAdmin();
+  await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
   await prisma.producer.update({ where: { id: producerId }, data: { active: true } });

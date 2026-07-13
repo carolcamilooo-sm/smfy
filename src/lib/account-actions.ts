@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { canAccessDashboard } from "@/lib/access";
 
 export type ActionState = { error?: string; success?: string };
 
 function accountPath(role: string) {
-  return role === "ADMIN" ? "/dashboard/ajustes" : "/atendimento/ajustes";
+  return canAccessDashboard(role) ? "/dashboard/ajustes" : "/atendimento/ajustes";
 }
 
 export async function updateProfile(

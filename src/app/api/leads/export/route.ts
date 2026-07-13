@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { canAccessDashboard } from "@/lib/access";
 import { getLeadsForExport, getLeadsByIds } from "@/lib/queries";
 import { brDateParts, brHour, brMinute, brDateString } from "@/lib/date-br";
 
@@ -30,7 +31,7 @@ const SERVICE_LABEL: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || !canAccessDashboard(session.user.role)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -1,14 +1,11 @@
 "use server";
 
-import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { normalizeDashboardLayout, type DashboardBlockKey } from "@/lib/dashboard-layout";
+import { requireDashboardAccess } from "@/lib/access";
 
 export async function updateDashboardLayout(order: DashboardBlockKey[]) {
-  const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
-    throw new Error("unauthorized");
-  }
+  const session = await requireDashboardAccess();
 
   const layout = normalizeDashboardLayout(order);
 

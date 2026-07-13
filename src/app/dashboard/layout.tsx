@@ -20,6 +20,7 @@ export default async function DashboardLayout({
 }) {
   const session = await auth();
   const name = session?.user.name ?? "";
+  const roleLabel = session?.user.role === "COLLABORATOR" ? "Colaborador" : "Admin";
 
   return (
     <div className="flex min-h-screen">
@@ -40,7 +41,7 @@ export default async function DashboardLayout({
               <p className="truncate text-sm font-medium text-primary">
                 {name}
               </p>
-              <p className="text-xs text-secondary">Admin</p>
+              <p className="text-xs text-secondary">{roleLabel}</p>
             </div>
             <SignOutButton />
           </div>

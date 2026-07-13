@@ -14,13 +14,15 @@ export default auth((req) => {
 
   const role = session.user.role;
 
+  const hasDashboardAccess = role === "ADMIN" || role === "COLLABORATOR";
+
   if (isLoginPage) {
     return NextResponse.redirect(
-      new URL(role === "ADMIN" ? "/dashboard" : "/atendimento", req.url)
+      new URL(hasDashboardAccess ? "/dashboard" : "/atendimento", req.url)
     );
   }
 
-  if (pathname.startsWith("/dashboard") && role !== "ADMIN") {
+  if (pathname.startsWith("/dashboard") && !hasDashboardAccess) {
     return NextResponse.redirect(new URL("/atendimento", req.url));
   }
 
