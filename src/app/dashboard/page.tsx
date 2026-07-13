@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RealtimeRefresher } from "@/components/realtime-refresher";
+import { ClockCard } from "@/components/clock-card";
 import { LeadToast } from "@/components/lead-toast";
 import { LeadVolumeChart } from "@/components/lead-volume-chart";
 import { DashboardSortable } from "@/components/dashboard-sortable";
@@ -343,6 +344,8 @@ export default async function DashboardPage({
         ]}
       />
       <LeadToast />
+
+      <ClockCard />
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
