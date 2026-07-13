@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getEffectiveStatus } from "@/lib/distribution";
@@ -6,11 +7,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ConfirmForm } from "@/components/confirm-form";
 import { cn } from "@/lib/utils";
 import {
   approveOperator,
   createOperator,
   rejectOperator,
+  removeOperator,
+  reactivateOperator,
   updateDistribution,
 } from "./actions";
 
@@ -49,9 +53,9 @@ export default async function OperadoresPage({
   searchParams: Promise<{ rankingPeriod?: string }>;
 }) {
   const { rankingPeriod } = await searchParams;
-  const [operators, pending, rejected, { range: rankingRange, ranking }] = await Promise.all([
+  const [operators, pending, rejected, deactivated, { range: rankingRange, ranking }] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "OPERATOR", approvalStatus: "APPROVED" },
+      where: { role: "OPERATOR", approvalStatus: "APPROVED", active: true },
       include: { distributionRule: true },
       orderBy: { name: "asc" },
     }),
@@ -62,6 +66,10 @@ export default async function OperadoresPage({
     prisma.user.findMany({
       where: { role: "OPERATOR", approvalStatus: "REJECTED" },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.user.findMany({
+      where: { role: "OPERATOR", approvalStatus: "APPROVED", active: false },
+      orderBy: { name: "asc" },
     }),
     getSalesRanking({ period: rankingPeriod }),
   ]);
@@ -158,7 +166,7 @@ export default async function OperadoresPage({
           esteja online e não esteja ocioso há mais de 15 minutos.
         </p>
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_5rem_5rem_5rem_auto_auto_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
+          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_5rem_5rem_5rem_auto_auto_auto_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
             <div className="text-xs text-secondary">Nome</div>
             <div className="text-xs text-secondary">E-mail</div>
             <div className="text-xs text-secondary">Status</div>
@@ -169,85 +177,96 @@ export default async function OperadoresPage({
             <div className="text-xs text-secondary">Prioridade</div>
             <div className="text-xs text-secondary">Atendente ativo</div>
             <div />
+            <div />
 
             {operators.map((op) => (
-              <form
-                key={op.id}
-                action={updateDistribution}
-                className="contents"
-              >
-                <input type="hidden" name="operatorId" value={op.id} />
-                <div className="border-t border-border py-2 text-primary">{op.name}</div>
-                <div className="border-t border-border py-2 text-secondary">
-                  {op.email}
-                </div>
-                <div className="border-t border-border py-2">
-                  {operatorStatusBadge(getEffectiveStatus(op))}
-                </div>
-                <div className="border-t border-border py-2">
-                  <Input
-                    type="number"
-                    name="weightApproved"
-                    min={0}
-                    max={100}
-                    defaultValue={op.distributionRule?.weightApproved ?? 0}
-                    className="w-16 font-mono"
-                  />
-                </div>
-                <div className="border-t border-border py-2">
-                  <Input
-                    type="number"
-                    name="weightPending"
-                    min={0}
-                    max={100}
-                    defaultValue={op.distributionRule?.weightPending ?? 0}
-                    className="w-16 font-mono"
-                  />
-                </div>
-                <div className="border-t border-border py-2">
-                  <Input
-                    type="number"
-                    name="weightDeclined"
-                    min={0}
-                    max={100}
-                    defaultValue={op.distributionRule?.weightDeclined ?? 0}
-                    className="w-16 font-mono"
-                  />
-                </div>
-                <div className="border-t border-border py-2">
-                  <input
-                    type="checkbox"
-                    name="active"
-                    defaultChecked={op.distributionRule?.active ?? true}
-                    className="h-4 w-4"
-                  />
-                </div>
-                <div className="border-t border-border py-2">
-                  <input
-                    type="checkbox"
-                    name="priority"
-                    defaultChecked={op.priority}
-                    className="h-4 w-4"
-                  />
-                </div>
-                <div className="border-t border-border py-2">
-                  <input
-                    type="checkbox"
-                    name="userActive"
-                    defaultChecked={op.active}
-                    className="h-4 w-4"
-                  />
-                </div>
-                <div className="border-t border-border py-2">
-                  <Button type="submit" variant="secondary">
-                    Salvar
-                  </Button>
-                </div>
-              </form>
+              <Fragment key={op.id}>
+                <form action={updateDistribution} className="contents">
+                  <input type="hidden" name="operatorId" value={op.id} />
+                  <div className="border-t border-border py-2 text-primary">{op.name}</div>
+                  <div className="border-t border-border py-2 text-secondary">
+                    {op.email}
+                  </div>
+                  <div className="border-t border-border py-2">
+                    {operatorStatusBadge(getEffectiveStatus(op))}
+                  </div>
+                  <div className="border-t border-border py-2">
+                    <Input
+                      type="number"
+                      name="weightApproved"
+                      min={0}
+                      max={100}
+                      defaultValue={op.distributionRule?.weightApproved ?? 0}
+                      className="w-16 font-mono"
+                    />
+                  </div>
+                  <div className="border-t border-border py-2">
+                    <Input
+                      type="number"
+                      name="weightPending"
+                      min={0}
+                      max={100}
+                      defaultValue={op.distributionRule?.weightPending ?? 0}
+                      className="w-16 font-mono"
+                    />
+                  </div>
+                  <div className="border-t border-border py-2">
+                    <Input
+                      type="number"
+                      name="weightDeclined"
+                      min={0}
+                      max={100}
+                      defaultValue={op.distributionRule?.weightDeclined ?? 0}
+                      className="w-16 font-mono"
+                    />
+                  </div>
+                  <div className="border-t border-border py-2">
+                    <input
+                      type="checkbox"
+                      name="active"
+                      defaultChecked={op.distributionRule?.active ?? true}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                  <div className="border-t border-border py-2">
+                    <input
+                      type="checkbox"
+                      name="priority"
+                      defaultChecked={op.priority}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                  <div className="border-t border-border py-2">
+                    <input
+                      type="checkbox"
+                      name="userActive"
+                      defaultChecked={op.active}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                  <div className="border-t border-border py-2">
+                    <Button type="submit" variant="secondary">
+                      Salvar
+                    </Button>
+                  </div>
+                </form>
+                <ConfirmForm
+                  action={removeOperator}
+                  confirmMessage={`Remover "${op.name}" da equipe? Se ele já atendeu algum lead, a conta só fica desativada (histórico preservado); senão é excluída de vez.`}
+                  className="contents"
+                >
+                  <input type="hidden" name="operatorId" value={op.id} />
+                  <div className="border-t border-border py-2">
+                    <Button type="submit" variant="danger">
+                      Remover
+                    </Button>
+                  </div>
+                </ConfirmForm>
+              </Fragment>
             ))}
 
             {operators.length === 0 && (
-              <div className="col-span-10 py-4 text-center text-secondary">
+              <div className="col-span-11 py-4 text-center text-secondary">
                 Nenhum operador cadastrado ainda.
               </div>
             )}
@@ -310,6 +329,36 @@ export default async function OperadoresPage({
           )}
         </div>
       </Card>
+
+      {deactivated.length > 0 && (
+        <Card>
+          <h2 className="mb-4 text-sm font-semibold text-primary">
+            Atendentes desativados
+          </h2>
+          <div className="space-y-2">
+            {deactivated.map((d) => (
+              <div
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-3 first:border-t-0"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div>
+                    <p className="text-sm text-secondary">{d.name}</p>
+                    <p className="text-xs text-muted">{d.email}</p>
+                  </div>
+                  <Badge tone="gray">Desativado</Badge>
+                </div>
+                <form action={reactivateOperator}>
+                  <input type="hidden" name="operatorId" value={d.id} />
+                  <Button type="submit" variant="secondary">
+                    Reativar
+                  </Button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {rejected.length > 0 && (
         <Card>

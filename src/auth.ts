@@ -11,6 +11,10 @@ class RejectedError extends CredentialsSignin {
   code = "rejected";
 }
 
+class InactiveError extends CredentialsSignin {
+  code = "inactive";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
@@ -33,6 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (user.approvalStatus === "PENDING") throw new PendingApprovalError();
         if (user.approvalStatus === "REJECTED") throw new RejectedError();
+        if (!user.active) throw new InactiveError();
 
         return {
           id: user.id,

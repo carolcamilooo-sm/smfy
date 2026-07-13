@@ -12,6 +12,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   pending_approval:
     "Seu cadastro ainda está aguardando aprovação do administrador.",
   rejected: "Seu cadastro foi recusado. Fale com o administrador.",
+  inactive: "Sua conta foi desativada. Fale com o administrador.",
 };
 
 export default function LoginPage() {

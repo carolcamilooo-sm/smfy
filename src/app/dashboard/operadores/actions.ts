@@ -90,6 +90,42 @@ export async function rejectOperator(formData: FormData) {
   revalidatePath("/dashboard/operadores");
 }
 
+/**
+ * Operators with lead history can't be hard-deleted (leads and lead events
+ * reference them for reporting), so they're deactivated instead: hidden
+ * from the active roster and blocked from logging in, but past leads stay
+ * intact. Only operators with zero history are actually erased.
+ */
+export async function removeOperator(formData: FormData) {
+  await requireDashboardAccess();
+
+  const operatorId = String(formData.get("operatorId"));
+  const [assignedLeadCount, leadEventCount] = await Promise.all([
+    prisma.lead.count({ where: { assignedOperatorId: operatorId } }),
+    prisma.leadEvent.count({ where: { operatorId } }),
+  ]);
+
+  if (assignedLeadCount === 0 && leadEventCount === 0) {
+    await prisma.user.delete({ where: { id: operatorId, role: "OPERATOR" } });
+  } else {
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: operatorId }, data: { active: false } }),
+      prisma.distributionRule.updateMany({ where: { operatorId }, data: { active: false } }),
+    ]);
+  }
+
+  revalidatePath("/dashboard/operadores");
+}
+
+export async function reactivateOperator(formData: FormData) {
+  await requireDashboardAccess();
+
+  const operatorId = String(formData.get("operatorId"));
+  await prisma.user.update({ where: { id: operatorId }, data: { active: true } });
+
+  revalidatePath("/dashboard/operadores");
+}
+
 function clampPercent(value: FormDataEntryValue | null) {
   return Math.min(100, Math.max(0, Number(value) || 0));
 }
