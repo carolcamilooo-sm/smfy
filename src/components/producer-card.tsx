@@ -56,20 +56,14 @@ type Producer = {
   kiwifyWebhookSecret: string | null;
   perfectpayToken: string | null;
   paytIntegrationKey: string | null;
+  lastWebhookGateway: string | null;
   products: Product[];
   _count: { leads: number };
 };
 
-function gatewayStorageKey(producerId: string) {
-  return `smfy:producer-gateway:${producerId}`;
-}
-
 function initialGateway(producer: Producer): (typeof GATEWAYS)[number]["key"] {
-  if (typeof window !== "undefined") {
-    const saved = window.localStorage.getItem(gatewayStorageKey(producer.id));
-    if (saved && GATEWAYS.some((g) => g.key === saved)) {
-      return saved as (typeof GATEWAYS)[number]["key"];
-    }
+  if (producer.lastWebhookGateway && GATEWAYS.some((g) => g.key === producer.lastWebhookGateway)) {
+    return producer.lastWebhookGateway as (typeof GATEWAYS)[number]["key"];
   }
   const configured = GATEWAYS.find((g) => g.secretField && producer[g.secretField]);
   return configured?.key ?? "kiwify";
@@ -86,6 +80,7 @@ export function ProducerCard({
   regenerateToken,
   updateGatewaySecret,
   removeProducer,
+  setLastWebhookGateway,
 }: {
   producer: Producer;
   operators: Operator[];
@@ -97,6 +92,7 @@ export function ProducerCard({
   regenerateToken: (formData: FormData) => void;
   updateGatewaySecret: (formData: FormData) => void;
   removeProducer: (formData: FormData) => void;
+  setLastWebhookGateway: (formData: FormData) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>(() =>
@@ -105,7 +101,10 @@ export function ProducerCard({
 
   function selectGateway(key: (typeof GATEWAYS)[number]["key"]) {
     setActiveGateway(key);
-    window.localStorage.setItem(gatewayStorageKey(producer.id), key);
+    const formData = new FormData();
+    formData.set("producerId", producer.id);
+    formData.set("gateway", key);
+    setLastWebhookGateway(formData);
   }
   const [accessProductId, setAccessProductId] = useState<string | null>(null);
 
