@@ -60,6 +60,11 @@ type Producer = {
   _count: { leads: number };
 };
 
+function configuredGateway(producer: Producer): (typeof GATEWAYS)[number]["key"] {
+  const configured = GATEWAYS.find((g) => g.secretField && producer[g.secretField]);
+  return configured?.key ?? "kiwify";
+}
+
 export function ProducerCard({
   producer,
   operators,
@@ -84,7 +89,9 @@ export function ProducerCard({
   removeProducer: (formData: FormData) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>("kiwify");
+  const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>(() =>
+    configuredGateway(producer)
+  );
   const [accessProductId, setAccessProductId] = useState<string | null>(null);
 
   const gateway = GATEWAYS.find((g) => g.key === activeGateway)!;
