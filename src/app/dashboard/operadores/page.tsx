@@ -11,7 +11,6 @@ import { ConfirmForm } from "@/components/confirm-form";
 import { cn } from "@/lib/utils";
 import {
   approveOperator,
-  createOperator,
   rejectOperator,
   removeOperator,
   reactivateOperator,
@@ -89,34 +88,6 @@ export default async function OperadoresPage({
           Gerencie operadores, aprovações e a distribuição de leads.
         </p>
       </div>
-
-      <Card className="max-w-2xl">
-        <h2 className="mb-4 text-sm font-semibold text-primary">
-          Adicionar colaborador
-        </h2>
-        <p className="mb-4 text-xs text-secondary">
-          Cria a conta já aprovada, sem precisar passar pelo cadastro
-          público e pela fila de aprovação.
-        </p>
-        <form
-          action={createOperator}
-          className="grid grid-cols-1 gap-3 sm:grid-cols-[1.2fr_1.4fr_1fr_auto] sm:items-end"
-        >
-          <div>
-            <label className="mb-1.5 block text-xs text-secondary">Nome</label>
-            <Input name="name" placeholder="Nome do colaborador" required />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs text-secondary">E-mail</label>
-            <Input name="email" type="email" placeholder="email@exemplo.com" required />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs text-secondary">Senha</label>
-            <Input name="password" type="password" placeholder="6+ caracteres" minLength={6} required />
-          </div>
-          <Button type="submit">Cadastrar</Button>
-        </form>
-      </Card>
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-primary">
