@@ -160,7 +160,6 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
         orderBy: { name: "asc" },
       }),
       prisma.lead.findMany({
-        where: { createdAt: { gte: range.from, lte: range.to } },
         include: {
           assignedOperator: { select: { name: true } },
           producer: { select: { name: true } },

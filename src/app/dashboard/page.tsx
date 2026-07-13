@@ -239,9 +239,14 @@ export default async function DashboardPage({
 
     "leads-recentes": (
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
-          Leads {periodLabel(range.period)}
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-primary">
+            Leads mais recentes
+          </h2>
+          <Link href="/dashboard/historico" className="text-xs text-accent hover:underline">
+            Ver histórico completo →
+          </Link>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -271,14 +276,14 @@ export default async function DashboardPage({
                     {lead.assignedOperator?.name ?? "-"}
                   </td>
                   <td className="py-2 font-mono text-muted">
-                    {new Date(lead.createdAt).toLocaleTimeString("pt-BR", { timeZone: BR_TIMEZONE })}
+                    {new Date(lead.createdAt).toLocaleString("pt-BR", { timeZone: BR_TIMEZONE })}
                   </td>
                 </tr>
               ))}
               {leads.length === 0 && (
                 <tr>
                   <td colSpan={8} className="py-4 text-center text-secondary">
-                    Nenhum lead recebido no período.
+                    Nenhum lead recebido ainda.
                   </td>
                 </tr>
               )}
