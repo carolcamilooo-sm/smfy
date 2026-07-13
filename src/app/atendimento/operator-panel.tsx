@@ -72,6 +72,7 @@ export function OperatorPanel({
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [productFilter, setProductFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
 
   const producers = Array.from(
     new Set(initialQueue.map((lead) => lead.producer?.name ?? "Sem produtor"))
@@ -99,7 +100,12 @@ export function OperatorPanel({
     )
     .filter((lead) => (paymentFilter === "all" ? true : lead.paymentStatus === paymentFilter))
     .filter((lead) => (productFilter === "all" ? true : (lead.product ?? "Sem produto") === productFilter))
-    .filter(withinPeriod);
+    .filter(withinPeriod)
+    .sort((a, b) => {
+      const aTime = a.assignedAt ? new Date(a.assignedAt).getTime() : 0;
+      const bTime = b.assignedAt ? new Date(b.assignedAt).getTime() : 0;
+      return sortOrder === "oldest" ? aTime - bTime : bTime - aTime;
+    });
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -255,6 +261,20 @@ export function OperatorPanel({
                   <option value="all">Todos</option>
                   <option value="today">Hoje</option>
                   <option value="7d">Últimos 7 dias</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="sort-order" className="text-xs text-secondary">
+                  Ordem
+                </label>
+                <select
+                  id="sort-order"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as "oldest" | "newest")}
+                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value="oldest">Mais antigo primeiro</option>
+                  <option value="newest">Mais recente primeiro</option>
                 </select>
               </div>
             </div>
