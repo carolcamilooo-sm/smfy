@@ -68,15 +68,17 @@ export function OperatorPanel({
   const [pending, setPending] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [producerFilter, setProducerFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
 
   const producers = Array.from(
     new Set(initialQueue.map((lead) => lead.producer?.name ?? "Sem produtor"))
   ).sort((a, b) => a.localeCompare(b));
 
-  const filteredQueue =
-    producerFilter === "all"
-      ? initialQueue
-      : initialQueue.filter((lead) => (lead.producer?.name ?? "Sem produtor") === producerFilter);
+  const filteredQueue = initialQueue
+    .filter((lead) =>
+      producerFilter === "all" ? true : (lead.producer?.name ?? "Sem produtor") === producerFilter
+    )
+    .filter((lead) => (paymentFilter === "all" ? true : lead.paymentStatus === paymentFilter));
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -163,23 +165,44 @@ export function OperatorPanel({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-primary">Fila de atendimento</h2>
           {initialQueue.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="producer-filter" className="text-xs text-secondary">
-                Produtor
-              </label>
-              <select
-                id="producer-filter"
-                value={producerFilter}
-                onChange={(e) => setProducerFilter(e.target.value)}
-                className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
-              >
-                <option value="all">Todos ({initialQueue.length})</option>
-                {producers.map((name) => (
-                  <option key={name} value={name}>
-                    {name} ({initialQueue.filter((l) => (l.producer?.name ?? "Sem produtor") === name).length})
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label htmlFor="producer-filter" className="text-xs text-secondary">
+                  Produtor
+                </label>
+                <select
+                  id="producer-filter"
+                  value={producerFilter}
+                  onChange={(e) => setProducerFilter(e.target.value)}
+                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value="all">Todos ({initialQueue.length})</option>
+                  {producers.map((name) => (
+                    <option key={name} value={name}>
+                      {name} ({initialQueue.filter((l) => (l.producer?.name ?? "Sem produtor") === name).length})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="payment-filter" className="text-xs text-secondary">
+                  Pagamento
+                </label>
+                <select
+                  id="payment-filter"
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
+                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value="all">Todos</option>
+                  <option value="APPROVED">
+                    Pago ({initialQueue.filter((l) => l.paymentStatus === "APPROVED").length})
                   </option>
-                ))}
-              </select>
+                  <option value="PENDING">
+                    Pendente ({initialQueue.filter((l) => l.paymentStatus === "PENDING").length})
+                  </option>
+                </select>
+              </div>
             </div>
           )}
         </div>
