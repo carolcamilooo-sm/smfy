@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { Logo } from "@/components/logo";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { SidebarClock } from "@/components/sidebar-clock";
 import { SignOutButton } from "@/components/sign-out-button";
 
 function initials(name: string) {
@@ -29,17 +30,20 @@ export default async function DashboardLayout({
 
         <SidebarNav />
 
-        <div className="mt-auto flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
-            {initials(name) || "?"}
+        <div className="mt-auto flex flex-col gap-3">
+          <SidebarClock />
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
+              {initials(name) || "?"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-primary">
+                {name}
+              </p>
+              <p className="text-xs text-secondary">Admin</p>
+            </div>
+            <SignOutButton />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-primary">
-              {name}
-            </p>
-            <p className="text-xs text-secondary">Admin</p>
-          </div>
-          <SignOutButton />
         </div>
       </aside>
       <main className="flex-1 px-6 py-8">{children}</main>
