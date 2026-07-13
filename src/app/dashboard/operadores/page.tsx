@@ -143,7 +143,7 @@ export default async function OperadoresPage({
             <div className="text-xs text-secondary">Status</div>
             <div className="text-xs text-secondary">% Aprovados</div>
             <div className="text-xs text-secondary">% Pendentes</div>
-            <div className="text-xs text-secondary">% Carrinhos</div>
+            <div className="text-xs text-secondary">% Recusados</div>
             <div className="text-xs text-secondary">Distrib. ativa</div>
             <div className="text-xs text-secondary">Prioridade</div>
             <div className="text-xs text-secondary">Atendente ativo</div>
@@ -248,7 +248,7 @@ export default async function OperadoresPage({
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-secondary">
             {sumLabel("Soma Aprovados", sumApproved)}
             {sumLabel("Soma Pendentes", sumPending)}
-            {sumLabel("Soma Carrinhos", sumDeclined)}
+            {sumLabel("Soma Recusados", sumDeclined)}
           </div>
         )}
       </Card>

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 function paymentTypeBadge(status: string) {
   if (status === "APPROVED") return <Badge tone="green">Lead pago</Badge>;
   if (status === "PENDING") return <Badge tone="yellow">Pendente</Badge>;
-  if (status === "DECLINED") return <Badge tone="red">Carrinho</Badge>;
+  if (status === "DECLINED") return <Badge tone="red">Recusado</Badge>;
   return <Badge tone="gray">Outro</Badge>;
 }
 

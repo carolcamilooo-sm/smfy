@@ -169,7 +169,7 @@ export default async function DashboardPage({
                 <th className="pb-2 pr-3">Produtor</th>
                 <th className="pb-2 pr-3">Aprovados</th>
                 <th className="pb-2 pr-3">Pendentes</th>
-                <th className="pb-2 pr-3">Carrinho abandonado</th>
+                <th className="pb-2 pr-3">Pagamento recusado</th>
                 <th className="pb-2">Total</th>
               </tr>
             </thead>
@@ -416,7 +416,7 @@ export default async function DashboardPage({
           </div>
         </Card>
         <Card>
-          <p className="text-xs text-secondary">Carrinho abandonado</p>
+          <p className="text-xs text-secondary">Pagamento recusado</p>
           <p className="mt-1 font-mono text-3xl font-semibold text-primary">
             {stats.declined.total}
           </p>

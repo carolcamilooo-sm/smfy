@@ -19,7 +19,7 @@ function csvCell(value: string | number | null | undefined) {
 const STATUS_LABEL: Record<string, string> = {
   APPROVED: "Aprovado",
   PENDING: "Pendente",
-  DECLINED: "Carrinho",
+  DECLINED: "Recusado",
   OTHER: "Outro",
 };
 

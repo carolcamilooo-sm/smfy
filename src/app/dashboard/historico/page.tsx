@@ -11,7 +11,7 @@ const STATUS_OPTIONS = [
   { value: "", label: "Todos os status" },
   { value: "approved", label: "Aprovado" },
   { value: "pending", label: "Pendente" },
-  { value: "declined", label: "Carrinho" },
+  { value: "declined", label: "Recusado" },
   { value: "other", label: "Outro" },
 ];
 
