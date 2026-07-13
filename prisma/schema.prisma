@@ -96,6 +96,7 @@ model Producer {
   kiwifyWebhookSecret String?
   perfectpayToken     String?
   paytIntegrationKey  String?
+  lastWebhookGateway  String?
   active              Boolean  @default(true)
   createdAt           DateTime @default(now())
 

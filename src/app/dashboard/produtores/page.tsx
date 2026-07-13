@@ -15,6 +15,7 @@ import {
   updateGatewaySecret,
   removeProducer,
   reactivateProducer,
+  setLastWebhookGateway,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +86,7 @@ export default async function ProdutoresPage() {
             regenerateToken={regenerateToken}
             updateGatewaySecret={updateGatewaySecret}
             removeProducer={removeProducer}
+            setLastWebhookGateway={setLastWebhookGateway}
           />
         ))}
 
