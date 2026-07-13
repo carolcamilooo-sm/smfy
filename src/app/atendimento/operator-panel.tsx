@@ -10,6 +10,7 @@ import { fillTemplate } from "@/lib/template";
 import { buildWhatsAppUrl } from "@/lib/phone";
 import { getPusherClient } from "@/lib/pusher-client";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
+import { brDateString, shiftDateString, startOfDayString } from "@/lib/date-br";
 
 type QueueLead = {
   id: string;
@@ -69,16 +70,36 @@ export function OperatorPanel({
   const [now, setNow] = useState(() => Date.now());
   const [producerFilter, setProducerFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [productFilter, setProductFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all");
 
   const producers = Array.from(
     new Set(initialQueue.map((lead) => lead.producer?.name ?? "Sem produtor"))
   ).sort((a, b) => a.localeCompare(b));
 
+  const products = Array.from(
+    new Set(initialQueue.map((lead) => lead.product ?? "Sem produto"))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const todayStr = brDateString(new Date());
+  const sevenDaysAgoStart = startOfDayString(shiftDateString(todayStr, -6));
+
+  function withinPeriod(lead: QueueLead) {
+    if (periodFilter === "all") return true;
+    if (!lead.assignedAt) return true;
+    const assignedAt = new Date(lead.assignedAt);
+    if (periodFilter === "today") return brDateString(assignedAt) === todayStr;
+    if (periodFilter === "7d") return assignedAt >= sevenDaysAgoStart;
+    return true;
+  }
+
   const filteredQueue = initialQueue
     .filter((lead) =>
       producerFilter === "all" ? true : (lead.producer?.name ?? "Sem produtor") === producerFilter
     )
-    .filter((lead) => (paymentFilter === "all" ? true : lead.paymentStatus === paymentFilter));
+    .filter((lead) => (paymentFilter === "all" ? true : lead.paymentStatus === paymentFilter))
+    .filter((lead) => (productFilter === "all" ? true : (lead.product ?? "Sem produto") === productFilter))
+    .filter(withinPeriod);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -203,6 +224,39 @@ export function OperatorPanel({
                   </option>
                 </select>
               </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="product-filter" className="text-xs text-secondary">
+                  Produto
+                </label>
+                <select
+                  id="product-filter"
+                  value={productFilter}
+                  onChange={(e) => setProductFilter(e.target.value)}
+                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value="all">Todos ({initialQueue.length})</option>
+                  {products.map((name) => (
+                    <option key={name} value={name}>
+                      {name} ({initialQueue.filter((l) => (l.product ?? "Sem produto") === name).length})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="period-filter" className="text-xs text-secondary">
+                  Período
+                </label>
+                <select
+                  id="period-filter"
+                  value={periodFilter}
+                  onChange={(e) => setPeriodFilter(e.target.value)}
+                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value="all">Todos</option>
+                  <option value="today">Hoje</option>
+                  <option value="7d">Últimos 7 dias</option>
+                </select>
+              </div>
             </div>
           )}
         </div>
@@ -236,7 +290,7 @@ export function OperatorPanel({
                       {formatWait(waitSeconds)}
                     </td>
                     <td className="py-3.5 pr-2">
-                      <span className="text-xs font-semibold text-warning">Novo</span>
+                      <Badge tone="red">Sem atendimento</Badge>
                     </td>
                     <td className="py-3.5 pr-2">
                       <select
@@ -278,7 +332,7 @@ export function OperatorPanel({
                   <td colSpan={7} className="py-6 text-center text-secondary">
                     {initialQueue.length === 0
                       ? "Nenhum lead na sua fila no momento."
-                      : "Nenhum lead desse produtor na sua fila agora."}
+                      : "Nenhum lead bate com esses filtros."}
                   </td>
                 </tr>
               )}
