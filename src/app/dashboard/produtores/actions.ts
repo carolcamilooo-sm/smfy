@@ -121,26 +121,6 @@ export async function updateGatewaySecret(formData: FormData) {
   revalidatePath("/dashboard/produtores");
 }
 
-const GATEWAY_KEYS = ["kiwify", "perfectpay", "disrupty", "smpay", "payt"] as const;
-
-/**
- * Just remembers which webhook tab the admin last looked at for this
- * producer, so it opens on the right one next visit — not user-facing data,
- * so no revalidatePath (would refetch the whole page on every tab click).
- */
-export async function setLastWebhookGateway(formData: FormData) {
-  await requireAdmin();
-
-  const producerId = String(formData.get("producerId"));
-  const gateway = String(formData.get("gateway"));
-  if (!GATEWAY_KEYS.includes(gateway as (typeof GATEWAY_KEYS)[number])) return;
-
-  await prisma.producer.update({
-    where: { id: producerId },
-    data: { lastWebhookGateway: gateway },
-  });
-}
-
 /**
  * Producers with lead history can't be hard-deleted (leads reference them
  * for reporting), so they're archived instead: hidden from the active list
