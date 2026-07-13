@@ -50,7 +50,7 @@ function paymentStatusesForCategory(category: DistributionCategory): PaymentStat
  * If a product has any explicit ProductAccess grants for this category,
  * only the granted operators are eligible — otherwise every operator is
  * (backward compatible: a product nobody configured behaves like before).
- * Declined/"carrinho" leads aren't gated by product, only approved/pending.
+ * Declined/"pagamento recusado" leads aren't gated by product, only approved/pending.
  */
 async function allowedOperatorIdsForProduct(
   productId: string | null | undefined,
@@ -72,7 +72,7 @@ async function allowedOperatorIdsForProduct(
 /**
  * Picks the eligible operator whose today-assigned/weight ratio is lowest
  * *within the lead's payment category*, so each category (Aprovados/
- * Pendentes/Carrinhos) converges independently on the proportions the admin
+ * Pendentes/Recusados) converges independently on the proportions the admin
  * configured, even though each invocation is stateless (serverless-safe
  * weighted round robin). Operators marked "priority" are always preferred
  * over non-priority ones when both are eligible.

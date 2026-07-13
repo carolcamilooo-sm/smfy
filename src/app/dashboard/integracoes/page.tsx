@@ -13,7 +13,7 @@ const GATEWAYS = [
     name: "PerfectPay",
     status: "complete" as const,
     description:
-      "Parser completo: status da venda (aprovado, pendente, recusado, cancelado, carrinho abandonado etc.), cliente, produto e valor são lidos automaticamente. Suporta verificação por public token, configurável por produtor em Produtores.",
+      "Parser completo: status da venda (aprovado, pendente, pagamento recusado, cancelado etc.), cliente, produto e valor são lidos automaticamente. Suporta verificação por public token, configurável por produtor em Produtores.",
   },
   {
     name: "Disrupty",
@@ -25,7 +25,7 @@ const GATEWAYS = [
     name: "SMPay",
     status: "complete" as const,
     description:
-      "Parser completo: eventos de venda, PIX, boleto, reembolso e assinatura são lidos automaticamente, com carrinho abandonado indo pro balde de recuperação. Suporta verificação de assinatura opcional (variável SMPAY_WEBHOOK_SECRET).",
+      "Parser completo: eventos de venda, PIX, boleto, reembolso e assinatura são lidos automaticamente, com pagamento recusado indo pro balde de recuperação. Suporta verificação de assinatura opcional (variável SMPAY_WEBHOOK_SECRET).",
   },
 ];
 
