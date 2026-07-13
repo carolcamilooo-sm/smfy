@@ -23,7 +23,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-app p-4">
+      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-app p-4">
         <div className="mb-6 px-2">
           <Logo className="text-2xl" />
         </div>
