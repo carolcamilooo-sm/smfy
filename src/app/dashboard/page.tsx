@@ -177,45 +177,6 @@ export default async function DashboardPage({
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-primary">
-          Leads por produtor {periodLabel(range.period)}
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-xs text-secondary">
-                <th className="pb-2 pr-3">Produtor</th>
-                <th className="pb-2 pr-3">Aprovados</th>
-                <th className="pb-2 pr-3">Pendentes</th>
-                <th className="pb-2 pr-3">Carrinho abandonado</th>
-                <th className="pb-2">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {producerSummary.map((p) => (
-                <tr key={p.producerId ?? "sem-produtor"} className="border-t border-border">
-                  <td className="py-2 text-primary">{p.name}</td>
-                  <td className="py-2 font-mono text-success">{p.approved}</td>
-                  <td className="py-2 font-mono text-warning">{p.pending}</td>
-                  <td className="py-2 font-mono text-danger">{p.declined}</td>
-                  <td className="py-2 font-mono text-secondary">
-                    {p.approved + p.pending + p.declined}
-                  </td>
-                </tr>
-              ))}
-              {producerSummary.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-4 text-center text-secondary">
-                    Nenhum lead recebido no período.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
           Buscar atendimento
         </h2>
         <p className="mb-4 text-xs text-secondary">
@@ -277,6 +238,45 @@ export default async function DashboardPage({
             </table>
           </div>
         )}
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Leads por produtor {periodLabel(range.period)}
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs text-secondary">
+                <th className="pb-2 pr-3">Produtor</th>
+                <th className="pb-2 pr-3">Aprovados</th>
+                <th className="pb-2 pr-3">Pendentes</th>
+                <th className="pb-2 pr-3">Carrinho abandonado</th>
+                <th className="pb-2">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {producerSummary.map((p) => (
+                <tr key={p.producerId ?? "sem-produtor"} className="border-t border-border">
+                  <td className="py-2 text-primary">{p.name}</td>
+                  <td className="py-2 font-mono text-success">{p.approved}</td>
+                  <td className="py-2 font-mono text-warning">{p.pending}</td>
+                  <td className="py-2 font-mono text-danger">{p.declined}</td>
+                  <td className="py-2 font-mono text-secondary">
+                    {p.approved + p.pending + p.declined}
+                  </td>
+                </tr>
+              ))}
+              {producerSummary.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-secondary">
+                    Nenhum lead recebido no período.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
