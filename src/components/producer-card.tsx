@@ -60,7 +60,17 @@ type Producer = {
   _count: { leads: number };
 };
 
-function configuredGateway(producer: Producer): (typeof GATEWAYS)[number]["key"] {
+function gatewayStorageKey(producerId: string) {
+  return `smfy:producer-gateway:${producerId}`;
+}
+
+function initialGateway(producer: Producer): (typeof GATEWAYS)[number]["key"] {
+  if (typeof window !== "undefined") {
+    const saved = window.localStorage.getItem(gatewayStorageKey(producer.id));
+    if (saved && GATEWAYS.some((g) => g.key === saved)) {
+      return saved as (typeof GATEWAYS)[number]["key"];
+    }
+  }
   const configured = GATEWAYS.find((g) => g.secretField && producer[g.secretField]);
   return configured?.key ?? "kiwify";
 }
@@ -90,8 +100,13 @@ export function ProducerCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>(() =>
-    configuredGateway(producer)
+    initialGateway(producer)
   );
+
+  function selectGateway(key: (typeof GATEWAYS)[number]["key"]) {
+    setActiveGateway(key);
+    window.localStorage.setItem(gatewayStorageKey(producer.id), key);
+  }
   const [accessProductId, setAccessProductId] = useState<string | null>(null);
 
   const gateway = GATEWAYS.find((g) => g.key === activeGateway)!;
@@ -289,7 +304,7 @@ export function ProducerCard({
                 <button
                   key={g.key}
                   type="button"
-                  onClick={() => setActiveGateway(g.key)}
+                  onClick={() => selectGateway(g.key)}
                   className={cn(
                     "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
                     activeGateway === g.key
