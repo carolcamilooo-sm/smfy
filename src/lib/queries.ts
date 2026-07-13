@@ -165,7 +165,7 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
           producer: { select: { name: true } },
         },
         orderBy: { createdAt: "desc" },
-        take: 50,
+        take: 20,
       }),
       prisma.leadEvent.groupBy({
         by: ["operatorId"],
