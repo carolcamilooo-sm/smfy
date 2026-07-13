@@ -62,6 +62,7 @@ model User {
   notifySound       Boolean       @default(true)
   notifyIdleWarning Boolean       @default(true)
   salesWebhookToken String?       @unique
+  dashboardLayout String[]        @default([])
   lastActivityAt DateTime         @default(now())
   createdAt      DateTime         @default(now())
 

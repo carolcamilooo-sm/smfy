@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { getDashboardData, searchLeads } from "@/lib/queries";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +9,11 @@ import { Button } from "@/components/ui/button";
 import { RealtimeRefresher } from "@/components/realtime-refresher";
 import { LeadToast } from "@/components/lead-toast";
 import { LeadVolumeChart } from "@/components/lead-volume-chart";
+import { DashboardSortable } from "@/components/dashboard-sortable";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
 import { BR_TIMEZONE } from "@/lib/date-br";
+import { normalizeDashboardLayout, type DashboardBlockKey } from "@/lib/dashboard-layout";
+import { updateDashboardLayout } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -68,17 +73,263 @@ export default async function DashboardPage({
   searchParams: Promise<{ q?: string; period?: string; from?: string; to?: string }>;
 }) {
   const { q, period, from, to } = await searchParams;
-  const { range, stats, volume, operatorSummaries, leads, producerSummary } = await getDashboardData({
-    period,
-    from,
-    to,
-  });
+  const [session, { range, stats, volume, operatorSummaries, leads, producerSummary }] = await Promise.all([
+    auth(),
+    getDashboardData({ period, from, to }),
+  ]);
   const searchResults = q ? await searchLeads(q) : null;
+
+  const currentUser = session
+    ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { dashboardLayout: true } })
+    : null;
+  const layout = normalizeDashboardLayout(currentUser?.dashboardLayout ?? []);
 
   const onlineCount = operatorSummaries.filter((op) => op.effectiveStatus !== "OFFLINE").length;
   const offlineCount = operatorSummaries.length - onlineCount;
 
   const distribution = [...operatorSummaries].sort((a, b) => b.weightApproved - a.weightApproved);
+
+  const blocks: Record<DashboardBlockKey, React.ReactNode> = {
+    "buscar-atendimento": (
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Buscar atendimento
+        </h2>
+        <p className="mb-4 text-xs text-secondary">
+          Encontre qual operador atendeu um lead pelo nome, e-mail ou
+          WhatsApp do cliente.
+        </p>
+        <form method="get" className="flex gap-2">
+          <Input
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Nome, e-mail ou WhatsApp do cliente"
+            className="max-w-sm"
+          />
+          <Button type="submit" variant="secondary">
+            Buscar
+          </Button>
+        </form>
+
+        {searchResults && (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs text-secondary">
+                  <th className="pb-2">Cliente</th>
+                  <th className="pb-2">Telefone</th>
+                  <th className="pb-2">Produtor</th>
+                  <th className="pb-2">Atendimento</th>
+                  <th className="pb-2">Operador que atendeu</th>
+                  <th className="pb-2">Atendido em</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchResults.map((lead) => (
+                  <tr key={lead.id} className="border-t border-border">
+                    <td className="py-2 text-primary">{lead.customerName}</td>
+                    <td className="py-2 font-mono text-secondary">{lead.phone}</td>
+                    <td className="py-2 text-secondary">
+                      {lead.producer?.name ?? "-"}
+                    </td>
+                    <td className="py-2">{serviceBadge(lead.serviceStatus)}</td>
+                    <td className="py-2 text-secondary">
+                      {lead.assignedOperator?.name ?? "-"}
+                    </td>
+                    <td className="py-2 font-mono text-muted">
+                      {lead.attendedAt
+                        ? new Date(lead.attendedAt).toLocaleString("pt-BR", { timeZone: BR_TIMEZONE })
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+                {searchResults.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-4 text-center text-secondary">
+                      Nenhum lead encontrado para &quot;{q}&quot;.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    ),
+
+    "leads-por-produtor": (
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Leads por produtor {periodLabel(range.period)}
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs text-secondary">
+                <th className="pb-2 pr-3">Produtor</th>
+                <th className="pb-2 pr-3">Aprovados</th>
+                <th className="pb-2 pr-3">Pendentes</th>
+                <th className="pb-2 pr-3">Carrinho abandonado</th>
+                <th className="pb-2">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {producerSummary.map((p) => (
+                <tr key={p.producerId ?? "sem-produtor"} className="border-t border-border">
+                  <td className="py-2 text-primary">{p.name}</td>
+                  <td className="py-2 font-mono text-success">{p.approved}</td>
+                  <td className="py-2 font-mono text-warning">{p.pending}</td>
+                  <td className="py-2 font-mono text-danger">{p.declined}</td>
+                  <td className="py-2 font-mono text-secondary">
+                    {p.approved + p.pending + p.declined}
+                  </td>
+                </tr>
+              ))}
+              {producerSummary.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-secondary">
+                    Nenhum lead recebido no período.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    ),
+
+    "volume-leads": (
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Volume de leads {periodLabel(range.period)}
+        </h2>
+        <LeadVolumeChart data={volume} />
+      </Card>
+    ),
+
+    "distribuicao-atendente": (
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Distribuição por atendente
+        </h2>
+        <p className="mb-3 text-xs text-secondary">% de leads aprovados (vendas)</p>
+        <div className="space-y-3">
+          {distribution.map((op) => (
+            <div key={op.id}>
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="text-primary">{op.name}</span>
+                <span className="font-mono text-secondary">{op.weightApproved}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-raised">
+                <div
+                  className="h-full rounded-full bg-accent"
+                  style={{ width: `${Math.min(100, op.weightApproved)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {distribution.length === 0 && (
+            <p className="text-sm text-secondary">
+              Nenhum operador cadastrado ainda.
+            </p>
+          )}
+        </div>
+      </Card>
+    ),
+
+    "leads-recentes": (
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-primary">
+          Leads {periodLabel(range.period)}
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs text-secondary">
+                <th className="pb-2">Cliente</th>
+                <th className="pb-2">Produtor</th>
+                <th className="pb-2">Gateway</th>
+                <th className="pb-2">Produto</th>
+                <th className="pb-2">Pagamento</th>
+                <th className="pb-2">Atendimento</th>
+                <th className="pb-2">Operador</th>
+                <th className="pb-2">Receb.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map((lead) => (
+                <tr key={lead.id} className="border-t border-border">
+                  <td className="py-2 text-primary">{lead.customerName}</td>
+                  <td className="py-2 text-secondary">
+                    {lead.producer?.name ?? "-"}
+                  </td>
+                  <td className="py-2 text-secondary">{lead.gateway}</td>
+                  <td className="py-2 text-secondary">{lead.product ?? "-"}</td>
+                  <td className="py-2">{paymentBadge(lead.paymentStatus)}</td>
+                  <td className="py-2">{serviceBadge(lead.serviceStatus)}</td>
+                  <td className="py-2 text-secondary">
+                    {lead.assignedOperator?.name ?? "-"}
+                  </td>
+                  <td className="py-2 font-mono text-muted">
+                    {new Date(lead.createdAt).toLocaleTimeString("pt-BR", { timeZone: BR_TIMEZONE })}
+                  </td>
+                </tr>
+              ))}
+              {leads.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-4 text-center text-secondary">
+                    Nenhum lead recebido no período.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    ),
+
+    operadores: (
+      <Card>
+        <div className="mb-4 flex items-center justify-between pr-8">
+          <h2 className="text-sm font-semibold text-primary">Operadores</h2>
+          <p className="text-xs">
+            <span className="font-mono text-success">{onlineCount} online</span>
+            <span className="text-secondary"> · </span>
+            <span className="font-mono text-secondary">{offlineCount} offline</span>
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs text-secondary">
+                <th className="pb-2">Nome</th>
+                <th className="pb-2">Status</th>
+                <th className="pb-2">% Aprovados</th>
+                <th className="pb-2">Atendidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {operatorSummaries.map((op) => (
+                <tr key={op.id} className="border-t border-border">
+                  <td className="py-2 text-primary">{op.name}</td>
+                  <td className="py-2">{operatorStatusDot(op.effectiveStatus)}</td>
+                  <td className="py-2 font-mono text-secondary">{op.weightApproved}%</td>
+                  <td className="py-2 font-mono text-secondary">{op.attendedInRange}</td>
+                </tr>
+              ))}
+              {operatorSummaries.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-4 text-center text-secondary">
+                    Nenhum operador cadastrado ainda.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    ),
+  };
 
   return (
     <div className="space-y-8">
@@ -175,237 +426,7 @@ export default async function DashboardPage({
         </Card>
       </div>
 
-      <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
-          Buscar atendimento
-        </h2>
-        <p className="mb-4 text-xs text-secondary">
-          Encontre qual operador atendeu um lead pelo nome, e-mail ou
-          WhatsApp do cliente.
-        </p>
-        <form method="get" className="flex gap-2">
-          <Input
-            name="q"
-            defaultValue={q ?? ""}
-            placeholder="Nome, e-mail ou WhatsApp do cliente"
-            className="max-w-sm"
-          />
-          <Button type="submit" variant="secondary">
-            Buscar
-          </Button>
-        </form>
-
-        {searchResults && (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-secondary">
-                  <th className="pb-2">Cliente</th>
-                  <th className="pb-2">Telefone</th>
-                  <th className="pb-2">Produtor</th>
-                  <th className="pb-2">Atendimento</th>
-                  <th className="pb-2">Operador que atendeu</th>
-                  <th className="pb-2">Atendido em</th>
-                </tr>
-              </thead>
-              <tbody>
-                {searchResults.map((lead) => (
-                  <tr key={lead.id} className="border-t border-border">
-                    <td className="py-2 text-primary">{lead.customerName}</td>
-                    <td className="py-2 font-mono text-secondary">{lead.phone}</td>
-                    <td className="py-2 text-secondary">
-                      {lead.producer?.name ?? "-"}
-                    </td>
-                    <td className="py-2">{serviceBadge(lead.serviceStatus)}</td>
-                    <td className="py-2 text-secondary">
-                      {lead.assignedOperator?.name ?? "-"}
-                    </td>
-                    <td className="py-2 font-mono text-muted">
-                      {lead.attendedAt
-                        ? new Date(lead.attendedAt).toLocaleString("pt-BR", { timeZone: BR_TIMEZONE })
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-                {searchResults.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-center text-secondary">
-                      Nenhum lead encontrado para &quot;{q}&quot;.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
-          Leads por produtor {periodLabel(range.period)}
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-xs text-secondary">
-                <th className="pb-2 pr-3">Produtor</th>
-                <th className="pb-2 pr-3">Aprovados</th>
-                <th className="pb-2 pr-3">Pendentes</th>
-                <th className="pb-2 pr-3">Carrinho abandonado</th>
-                <th className="pb-2">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {producerSummary.map((p) => (
-                <tr key={p.producerId ?? "sem-produtor"} className="border-t border-border">
-                  <td className="py-2 text-primary">{p.name}</td>
-                  <td className="py-2 font-mono text-success">{p.approved}</td>
-                  <td className="py-2 font-mono text-warning">{p.pending}</td>
-                  <td className="py-2 font-mono text-danger">{p.declined}</td>
-                  <td className="py-2 font-mono text-secondary">
-                    {p.approved + p.pending + p.declined}
-                  </td>
-                </tr>
-              ))}
-              {producerSummary.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-4 text-center text-secondary">
-                    Nenhum lead recebido no período.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <h2 className="mb-4 text-sm font-semibold text-primary">
-            Volume de leads {periodLabel(range.period)}
-          </h2>
-          <LeadVolumeChart data={volume} />
-        </Card>
-
-        <Card>
-          <h2 className="mb-4 text-sm font-semibold text-primary">
-            Distribuição por atendente
-          </h2>
-          <p className="mb-3 text-xs text-secondary">% de leads aprovados (vendas)</p>
-          <div className="space-y-3">
-            {distribution.map((op) => (
-              <div key={op.id}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="text-primary">{op.name}</span>
-                  <span className="font-mono text-secondary">{op.weightApproved}%</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-raised">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${Math.min(100, op.weightApproved)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-            {distribution.length === 0 && (
-              <p className="text-sm text-secondary">
-                Nenhum operador cadastrado ainda.
-              </p>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <h2 className="mb-4 text-sm font-semibold text-primary">
-            Leads {periodLabel(range.period)}
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-secondary">
-                  <th className="pb-2">Cliente</th>
-                  <th className="pb-2">Produtor</th>
-                  <th className="pb-2">Gateway</th>
-                  <th className="pb-2">Produto</th>
-                  <th className="pb-2">Pagamento</th>
-                  <th className="pb-2">Atendimento</th>
-                  <th className="pb-2">Operador</th>
-                  <th className="pb-2">Receb.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leads.map((lead) => (
-                  <tr key={lead.id} className="border-t border-border">
-                    <td className="py-2 text-primary">{lead.customerName}</td>
-                    <td className="py-2 text-secondary">
-                      {lead.producer?.name ?? "-"}
-                    </td>
-                    <td className="py-2 text-secondary">{lead.gateway}</td>
-                    <td className="py-2 text-secondary">{lead.product ?? "-"}</td>
-                    <td className="py-2">{paymentBadge(lead.paymentStatus)}</td>
-                    <td className="py-2">{serviceBadge(lead.serviceStatus)}</td>
-                    <td className="py-2 text-secondary">
-                      {lead.assignedOperator?.name ?? "-"}
-                    </td>
-                    <td className="py-2 font-mono text-muted">
-                      {new Date(lead.createdAt).toLocaleTimeString("pt-BR", { timeZone: BR_TIMEZONE })}
-                    </td>
-                  </tr>
-                ))}
-                {leads.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="py-4 text-center text-secondary">
-                      Nenhum lead recebido no período.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-primary">Operadores</h2>
-            <p className="text-xs">
-              <span className="font-mono text-success">{onlineCount} online</span>
-              <span className="text-secondary"> · </span>
-              <span className="font-mono text-secondary">{offlineCount} offline</span>
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-secondary">
-                  <th className="pb-2">Nome</th>
-                  <th className="pb-2">Status</th>
-                  <th className="pb-2">% Aprovados</th>
-                  <th className="pb-2">Atendidos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {operatorSummaries.map((op) => (
-                  <tr key={op.id} className="border-t border-border">
-                    <td className="py-2 text-primary">{op.name}</td>
-                    <td className="py-2">{operatorStatusDot(op.effectiveStatus)}</td>
-                    <td className="py-2 font-mono text-secondary">{op.weightApproved}%</td>
-                    <td className="py-2 font-mono text-secondary">{op.attendedInRange}</td>
-                  </tr>
-                ))}
-                {operatorSummaries.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-4 text-center text-secondary">
-                      Nenhum operador cadastrado ainda.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
+      <DashboardSortable order={layout} blocks={blocks} saveOrder={updateDashboardLayout} />
     </div>
   );
 }
