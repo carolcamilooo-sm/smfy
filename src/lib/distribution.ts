@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { Lead, PaymentStatus, User } from "@/generated/prisma/client";
+import { startOfToday } from "@/lib/date-br";
 
 export const IDLE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -12,12 +13,6 @@ export function getEffectiveStatus(user: {
   if (user.status === "OFFLINE") return "OFFLINE";
   const idleFor = Date.now() - user.lastActivityAt.getTime();
   return idleFor < IDLE_THRESHOLD_MS ? "ONLINE" : "IDLE";
-}
-
-function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
 }
 
 export type DistributionCategory = "approved" | "pending" | "declined";

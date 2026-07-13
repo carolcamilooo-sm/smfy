@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ReatenderButton } from "./reatender-button";
+import { BR_TIMEZONE } from "@/lib/date-br";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,7 @@ export default async function HistoricoAtendentePage({
                       ? new Date(lead.attendedAt).toLocaleDateString("pt-BR", {
                           day: "2-digit",
                           month: "2-digit",
+                          timeZone: BR_TIMEZONE,
                         })
                       : "-"}
                   </td>
@@ -118,6 +120,7 @@ export default async function HistoricoAtendentePage({
                       ? new Date(lead.attendedAt).toLocaleTimeString("pt-BR", {
                           hour: "2-digit",
                           minute: "2-digit",
+                          timeZone: BR_TIMEZONE,
                         })
                       : "-"}
                   </td>

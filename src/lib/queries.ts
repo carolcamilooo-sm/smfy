@@ -1,24 +1,17 @@
 import { prisma } from "@/lib/db";
 import { getEffectiveStatus } from "@/lib/distribution";
 import type { Prisma } from "@/generated/prisma/client";
-
-function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function endOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
+import {
+  brDateString,
+  brHour,
+  brWeekday,
+  endOfDay,
+  endOfDayString,
+  shiftDateString,
+  startOfDay,
+  startOfDayString,
+  startOfToday,
+} from "@/lib/date-br";
 
 export type DateRangeParams = { period?: string; from?: string; to?: string };
 export type DateRange = { from: Date; to: Date; bucket: "hour" | "day"; period: string };
@@ -26,43 +19,45 @@ export type DateRange = { from: Date; to: Date; bucket: "hour" | "day"; period: 
 export function resolveDateRange(params: DateRangeParams): DateRange {
   const period = params.period ?? "today";
   const now = new Date();
+  const todayStr = brDateString(now);
 
   if (period === "yesterday") {
-    const y = new Date(now);
-    y.setDate(y.getDate() - 1);
-    return { from: startOfDay(y), to: endOfDay(y), bucket: "hour", period };
+    const y = shiftDateString(todayStr, -1);
+    return { from: startOfDayString(y), to: endOfDayString(y), bucket: "hour", period };
   }
   if (period === "week") {
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? 6 : day - 1;
-    const monday = new Date(now);
-    monday.setDate(monday.getDate() - diffToMonday);
-    return { from: startOfDay(monday), to: endOfDay(now), bucket: "day", period };
+    const weekday = brWeekday(now);
+    const diffToMonday = weekday === 0 ? 6 : weekday - 1;
+    const monday = shiftDateString(todayStr, -diffToMonday);
+    return { from: startOfDayString(monday), to: endOfDay(now), bucket: "day", period };
   }
   if (period === "7d") {
-    const from = new Date(now);
-    from.setDate(from.getDate() - 6);
-    return { from: startOfDay(from), to: endOfDay(now), bucket: "day", period };
+    const from = shiftDateString(todayStr, -6);
+    return { from: startOfDayString(from), to: endOfDay(now), bucket: "day", period };
   }
   if (period === "month") {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: startOfDay(from), to: endOfDay(now), bucket: "day", period };
+    const from = `${todayStr.slice(0, 7)}-01`;
+    return { from: startOfDayString(from), to: endOfDay(now), bucket: "day", period };
   }
   if (period === "custom" && params.from && params.to) {
-    const from = startOfDay(new Date(`${params.from}T00:00:00`));
-    const to = endOfDay(new Date(`${params.to}T00:00:00`));
     const singleDay = params.from === params.to;
-    return { from, to, bucket: singleDay ? "hour" : "day", period };
+    return {
+      from: startOfDayString(params.from),
+      to: endOfDayString(params.to),
+      bucket: singleDay ? "hour" : "day",
+      period,
+    };
   }
 
-  return { from: startOfDay(now), to: endOfDay(now), bucket: "hour", period: "today" };
+  return { from: startOfDayString(todayStr), to: endOfDayString(todayStr), bucket: "hour", period: "today" };
 }
 
 function bucketLabel(date: Date, bucket: "hour" | "day"): string {
   if (bucket === "hour") {
-    return `${String(date.getHours()).padStart(2, "0")}h`;
+    return `${String(brHour(date)).padStart(2, "0")}h`;
   }
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  const [, month, day] = brDateString(date).split("-");
+  return `${day}/${month}`;
 }
 
 function buildVolumeBuckets(
@@ -76,11 +71,11 @@ function buildVolumeBuckets(
       counts.set(`${String(h).padStart(2, "0")}h`, 0);
     }
   } else {
-    const cursor = startOfDay(range.from);
+    let cursor = startOfDay(range.from);
     const last = startOfDay(range.to);
     while (cursor <= last) {
       counts.set(bucketLabel(cursor, "day"), 0);
-      cursor.setDate(cursor.getDate() + 1);
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
     }
   }
 
@@ -303,11 +298,9 @@ function localDayKey(date: Date): number {
 }
 
 function startOfWeek(date: Date): Date {
-  const d = startOfDay(date);
-  const day = d.getDay();
-  const diffToMonday = day === 0 ? 6 : day - 1;
-  d.setDate(d.getDate() - diffToMonday);
-  return d;
+  const weekday = brWeekday(date);
+  const diffToMonday = weekday === 0 ? 6 : weekday - 1;
+  return startOfDayString(shiftDateString(brDateString(date), -diffToMonday));
 }
 
 export async function getOperatorPerformance(operatorId: string, params: DateRangeParams) {
@@ -319,8 +312,7 @@ export async function getOperatorPerformance(operatorId: string, params: DateRan
   const weekStart = startOfWeek(new Date());
   const weekEnd = endOfDay(new Date());
 
-  const sevenDaysAgo = startOfDay(new Date());
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  const sevenDaysAgo = startOfDayString(shiftDateString(brDateString(new Date()), -6));
 
   const [
     attendedLeads,
@@ -403,13 +395,13 @@ export async function getOperatorPerformance(operatorId: string, params: DateRan
   const rankPosition = rankedOperators.findIndex((op) => op.id === operatorId) + 1;
 
   const dailyCounts = new Map<number, number>();
-  const cursor = new Date(sevenDaysAgo);
+  let cursor = new Date(sevenDaysAgo);
   const keys: number[] = [];
   for (let i = 0; i < 7; i++) {
     const key = localDayKey(cursor);
     dailyCounts.set(key, 0);
     keys.push(key);
-    cursor.setDate(cursor.getDate() + 1);
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
   }
   for (const lead of dailyLeads) {
     if (!lead.attendedAt) continue;
@@ -422,7 +414,7 @@ export async function getOperatorPerformance(operatorId: string, params: DateRan
     const date = new Date(key);
     const isToday = idx === keys.length - 1;
     return {
-      label: isToday ? "Hoje" : WEEKDAY_LABELS[date.getDay()],
+      label: isToday ? "Hoje" : WEEKDAY_LABELS[brWeekday(date)],
       count: dailyCounts.get(key) ?? 0,
     };
   });

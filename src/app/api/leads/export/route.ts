@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getLeadsForExport, getLeadsByIds } from "@/lib/queries";
+import { brDateParts, brHour, brMinute, brDateString } from "@/lib/date-br";
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 function formatDate(date: Date) {
-  return `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]} ${date.getFullYear()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const { year, month, day } = brDateParts(date);
+  return `${String(day).padStart(2, "0")} ${MONTHS[month]} ${year} ${String(brHour(date)).padStart(2, "0")}:${String(brMinute(date)).padStart(2, "0")}`;
 }
 
 function csvCell(value: string | number | null | undefined) {
@@ -85,7 +87,7 @@ export async function GET(request: NextRequest) {
   );
 
   const csv = "﻿" + [header.map(csvCell).join(","), ...rows].join("\r\n");
-  const filename = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `leads-${brDateString(new Date())}.csv`;
 
   return new NextResponse(csv, {
     headers: {

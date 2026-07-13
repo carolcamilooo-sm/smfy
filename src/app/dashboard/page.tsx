@@ -8,6 +8,7 @@ import { RealtimeRefresher } from "@/components/realtime-refresher";
 import { LeadToast } from "@/components/lead-toast";
 import { LeadVolumeChart } from "@/components/lead-volume-chart";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
+import { BR_TIMEZONE } from "@/lib/date-br";
 
 export const dynamic = "force-dynamic";
 
@@ -260,7 +261,7 @@ export default async function DashboardPage({
                     </td>
                     <td className="py-2 font-mono text-muted">
                       {lead.attendedAt
-                        ? new Date(lead.attendedAt).toLocaleString("pt-BR")
+                        ? new Date(lead.attendedAt).toLocaleString("pt-BR", { timeZone: BR_TIMEZONE })
                         : "-"}
                     </td>
                   </tr>
@@ -349,7 +350,7 @@ export default async function DashboardPage({
                       {lead.assignedOperator?.name ?? "-"}
                     </td>
                     <td className="py-2 font-mono text-muted">
-                      {new Date(lead.createdAt).toLocaleTimeString("pt-BR")}
+                      {new Date(lead.createdAt).toLocaleTimeString("pt-BR", { timeZone: BR_TIMEZONE })}
                     </td>
                   </tr>
                 ))}
