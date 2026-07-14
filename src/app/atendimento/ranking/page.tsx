@@ -57,7 +57,7 @@ export default async function RankingPage({
       </div>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-secondary">Top 5</h2>
+        <h2 className="mb-4 text-sm font-semibold text-title">Top 5</h2>
         <div className="space-y-2">
           {top5.map((entry, i) => {
             const isMe = entry.operatorId === session!.user.id;

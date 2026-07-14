@@ -36,17 +36,17 @@ export default async function AjustesAtendentePage() {
       </div>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-secondary">Perfil</h2>
+        <h2 className="mb-4 text-sm font-semibold text-title">Perfil</h2>
         <ProfileForm name={user.name} email={user.email} />
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-secondary">Senha</h2>
+        <h2 className="mb-4 text-sm font-semibold text-title">Senha</h2>
         <PasswordForm />
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-secondary">Notificações</h2>
+        <h2 className="mb-4 text-sm font-semibold text-title">Notificações</h2>
         <NotificationToggle
           field="notifySound"
           label="Som ao receber novo lead"
@@ -60,7 +60,7 @@ export default async function AjustesAtendentePage() {
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-secondary">
+        <h2 className="mb-4 text-sm font-semibold text-title">
           Meu webhook de vendas
         </h2>
         <SalesWebhookCard

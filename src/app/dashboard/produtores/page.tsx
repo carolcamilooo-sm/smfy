@@ -53,7 +53,7 @@ export default async function ProdutoresPage() {
       </div>
 
       <Card className="max-w-2xl">
-        <h2 className="mb-4 text-sm font-semibold text-secondary">
+        <h2 className="mb-4 text-sm font-semibold text-title">
           Novo produtor
         </h2>
         <form action={createProducer} className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1.4fr_auto] sm:items-end">
@@ -101,7 +101,7 @@ export default async function ProdutoresPage() {
 
       {archivedProducers.length > 0 && (
         <Card>
-          <h2 className="mb-4 text-sm font-semibold text-secondary">
+          <h2 className="mb-4 text-sm font-semibold text-title">
             Produtores arquivados
           </h2>
           <div className="space-y-2">

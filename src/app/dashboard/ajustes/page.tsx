@@ -35,18 +35,18 @@ export default async function AjustesPage() {
       </div>
 
       <Card className="max-w-xl">
-        <h2 className="mb-4 text-sm font-semibold text-secondary">Perfil</h2>
+        <h2 className="mb-4 text-sm font-semibold text-title">Perfil</h2>
         <ProfileForm name={user.name} email={user.email} />
       </Card>
 
       <Card className="max-w-xl">
-        <h2 className="mb-4 text-sm font-semibold text-secondary">Senha</h2>
+        <h2 className="mb-4 text-sm font-semibold text-title">Senha</h2>
         <PasswordForm />
       </Card>
 
       {isAdmin && (
         <Card className="max-w-2xl">
-          <h2 className="mb-1 text-sm font-semibold text-secondary">
+          <h2 className="mb-1 text-sm font-semibold text-title">
             Colaboradores do admin
           </h2>
           <p className="mb-4 text-xs text-secondary">
