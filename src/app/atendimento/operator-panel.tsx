@@ -71,7 +71,7 @@ export function OperatorPanel({
   const [producerFilter, setProducerFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [productFilter, setProductFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("today");
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
 
   const producers = Array.from(
