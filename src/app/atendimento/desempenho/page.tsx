@@ -88,7 +88,7 @@ export default async function MeuDesempenhoPage({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <div className="mb-5 flex items-center justify-between">
-            <span className="text-sm font-semibold text-primary">Leads atendidos por dia</span>
+            <span className="text-sm font-semibold text-secondary">Leads atendidos por dia</span>
             <span className="font-mono text-xs text-muted">últimos 7 dias</span>
           </div>
           <div className="flex h-36 items-end gap-3">
@@ -104,7 +104,7 @@ export default async function MeuDesempenhoPage({
         </Card>
 
         <Card>
-          <span className="mb-4 block text-sm font-semibold text-primary">
+          <span className="mb-4 block text-sm font-semibold text-secondary">
             Ranking da equipe — semana
           </span>
           <div className="flex flex-col gap-2.5">

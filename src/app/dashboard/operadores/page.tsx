@@ -90,7 +90,7 @@ export default async function OperadoresPage({
       </div>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
+        <h2 className="mb-4 text-sm font-semibold text-secondary">
           Solicitações pendentes
         </h2>
         {pending.length === 0 ? (
@@ -127,7 +127,7 @@ export default async function OperadoresPage({
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
+        <h2 className="mb-4 text-sm font-semibold text-secondary">
           Distribuição de leads
         </h2>
         <p className="mb-4 text-xs text-secondary">
@@ -255,7 +255,7 @@ export default async function OperadoresPage({
 
       <Card>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-primary">
+          <h2 className="text-sm font-semibold text-secondary">
             Ranking de vendas (webhook pessoal)
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -303,7 +303,7 @@ export default async function OperadoresPage({
 
       {deactivated.length > 0 && (
         <Card>
-          <h2 className="mb-4 text-sm font-semibold text-primary">
+          <h2 className="mb-4 text-sm font-semibold text-secondary">
             Atendentes desativados
           </h2>
           <div className="space-y-2">
@@ -333,7 +333,7 @@ export default async function OperadoresPage({
 
       {rejected.length > 0 && (
         <Card>
-          <h2 className="mb-4 text-sm font-semibold text-primary">
+          <h2 className="mb-4 text-sm font-semibold text-secondary">
             Recusados
           </h2>
           <div className="space-y-2">

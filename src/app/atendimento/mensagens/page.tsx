@@ -36,7 +36,7 @@ export default async function MensagensAtendentePage() {
       </div>
 
       <Card className="max-w-2xl">
-        <h2 className="mb-4 text-sm font-semibold text-primary">
+        <h2 className="mb-4 text-sm font-semibold text-secondary">
           Nova mensagem
         </h2>
         <form action={createTemplate} className="space-y-3.5">
@@ -61,7 +61,7 @@ export default async function MensagensAtendentePage() {
       </Card>
 
       <div>
-        <h2 className="mb-3.5 text-sm font-semibold text-primary">Minhas mensagens</h2>
+        <h2 className="mb-3.5 text-sm font-semibold text-secondary">Minhas mensagens</h2>
         <div className="space-y-3">
           {templates.map((template) => (
             <Card key={template.id} className="max-w-2xl">

@@ -96,7 +96,7 @@ export default async function DashboardPage({
   const blocks: Record<DashboardBlockKey, React.ReactNode> = {
     "buscar-atendimento": (
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
+        <h2 className="mb-4 text-sm font-semibold text-secondary">
           Buscar atendimento
         </h2>
         <p className="mb-4 text-xs text-secondary">
@@ -163,7 +163,7 @@ export default async function DashboardPage({
 
     "leads-por-produtor": (
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
+        <h2 className="mb-4 text-sm font-semibold text-secondary">
           Leads por produtor {periodLabel(range.period)}
         </h2>
         <div className="overflow-x-auto">
@@ -204,7 +204,7 @@ export default async function DashboardPage({
 
     "volume-leads": (
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
+        <h2 className="mb-4 text-sm font-semibold text-secondary">
           Volume de leads {periodLabel(range.period)}
         </h2>
         <LeadVolumeChart data={volume} />
@@ -213,7 +213,7 @@ export default async function DashboardPage({
 
     "distribuicao-atendente": (
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-primary">
+        <h2 className="mb-4 text-sm font-semibold text-secondary">
           Distribuição por atendente
         </h2>
         <p className="mb-3 text-xs text-secondary">% de leads aprovados (vendas)</p>
@@ -244,7 +244,7 @@ export default async function DashboardPage({
     "leads-recentes": (
       <Card>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-primary">
+          <h2 className="text-sm font-semibold text-secondary">
             Leads mais recentes de hoje
           </h2>
           <Link href="/dashboard/historico" className="text-xs text-accent hover:underline">
@@ -300,7 +300,7 @@ export default async function DashboardPage({
     operadores: (
       <Card>
         <div className="mb-4 flex items-center justify-between pr-16">
-          <h2 className="text-sm font-semibold text-primary">Operadores</h2>
+          <h2 className="text-sm font-semibold text-secondary">Operadores</h2>
           <p className="text-xs">
             <span className="font-mono text-success">{onlineCount} online</span>
             <span className="text-secondary"> · </span>

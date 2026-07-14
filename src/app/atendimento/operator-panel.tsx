@@ -190,7 +190,7 @@ export function OperatorPanel({
 
       <Card>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-primary">Fila de atendimento</h2>
+          <h2 className="text-sm font-semibold text-secondary">Fila de atendimento</h2>
           {initialQueue.length > 0 && (
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
