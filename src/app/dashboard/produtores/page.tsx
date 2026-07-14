@@ -8,6 +8,7 @@ import { ProducerCard } from "@/components/producer-card";
 import {
   createProducer,
   addProduct,
+  updateProduct,
   removeProduct,
   toggleProductActive,
   updateProductAccess,
@@ -80,6 +81,7 @@ export default async function ProdutoresPage() {
             operators={operators}
             baseUrl={baseUrl}
             addProduct={addProduct}
+            updateProduct={updateProduct}
             removeProduct={removeProduct}
             toggleProductActive={toggleProductActive}
             updateProductAccess={updateProductAccess}

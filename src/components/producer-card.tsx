@@ -74,6 +74,7 @@ export function ProducerCard({
   operators,
   baseUrl,
   addProduct,
+  updateProduct,
   removeProduct,
   toggleProductActive,
   updateProductAccess,
@@ -86,6 +87,7 @@ export function ProducerCard({
   operators: Operator[];
   baseUrl: string;
   addProduct: (formData: FormData) => void;
+  updateProduct: (formData: FormData) => void;
   removeProduct: (formData: FormData) => void;
   toggleProductActive: (formData: FormData) => void;
   updateProductAccess: (formData: FormData) => void;
@@ -98,6 +100,7 @@ export function ProducerCard({
   const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>(() =>
     initialGateway(producer)
   );
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   function selectGateway(key: (typeof GATEWAYS)[number]["key"]) {
     setActiveGateway(key);
@@ -177,7 +180,42 @@ export function ProducerCard({
                     {producer.products.map((product) => (
                       <Fragment key={product.id}>
                         <tr className="border-t border-border">
-                          <td className="py-2 pr-3 text-primary">{product.name}</td>
+                          <td className="py-2 pr-3 text-primary">
+                            {editingProductId === product.id ? (
+                              <form
+                                action={updateProduct}
+                                className="flex items-center gap-1.5"
+                                onSubmit={() => setEditingProductId(null)}
+                              >
+                                <input type="hidden" name="id" value={product.id} />
+                                <Input
+                                  name="name"
+                                  defaultValue={product.name}
+                                  autoFocus
+                                  className="h-7 py-1 text-sm"
+                                />
+                                <Button type="submit" variant="secondary" className="shrink-0 py-1 text-xs">
+                                  Salvar
+                                </Button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingProductId(null)}
+                                  className="shrink-0 text-xs text-secondary hover:text-primary"
+                                >
+                                  Cancelar
+                                </button>
+                              </form>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingProductId(product.id)}
+                                className="text-left hover:text-accent"
+                                title="Editar nome do produto"
+                              >
+                                {product.name}
+                              </button>
+                            )}
+                          </td>
                           <td className="py-2 pr-3 font-mono text-secondary">{product.sigla ?? "-"}</td>
                           <td className="py-2 pr-3 font-mono text-secondary">{product.codigo ?? "-"}</td>
                           <td className="py-2 pr-3">

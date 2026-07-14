@@ -42,6 +42,17 @@ export async function addProduct(formData: FormData) {
   revalidatePath("/dashboard/produtores");
 }
 
+export async function updateProduct(formData: FormData) {
+  await requireDashboardAccess();
+
+  const id = String(formData.get("id"));
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Informe o nome do produto.");
+
+  await prisma.product.update({ where: { id }, data: { name } });
+  revalidatePath("/dashboard/produtores");
+}
+
 export async function removeProduct(formData: FormData) {
   await requireDashboardAccess();
   const id = String(formData.get("id"));
