@@ -27,6 +27,17 @@ export async function createProducer(formData: FormData) {
   revalidatePath("/dashboard/produtores");
 }
 
+export async function updateProducer(formData: FormData) {
+  await requireDashboardAccess();
+
+  const id = String(formData.get("id"));
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Informe o nome do produtor.");
+
+  await prisma.producer.update({ where: { id }, data: { name } });
+  revalidatePath("/dashboard/produtores");
+}
+
 export async function addProduct(formData: FormData) {
   await requireDashboardAccess();
 

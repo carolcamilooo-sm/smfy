@@ -13,6 +13,7 @@ import {
   toggleProductActive,
   updateProductAccess,
   regenerateToken,
+  updateProducer,
   updateGatewaySecret,
   removeProducer,
   reactivateProducer,
@@ -86,6 +87,7 @@ export default async function ProdutoresPage() {
             toggleProductActive={toggleProductActive}
             updateProductAccess={updateProductAccess}
             regenerateToken={regenerateToken}
+            updateProducer={updateProducer}
             updateGatewaySecret={updateGatewaySecret}
             removeProducer={removeProducer}
             setLastWebhookGateway={setLastWebhookGateway}

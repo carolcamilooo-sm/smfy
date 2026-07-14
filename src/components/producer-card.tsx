@@ -79,6 +79,7 @@ export function ProducerCard({
   toggleProductActive,
   updateProductAccess,
   regenerateToken,
+  updateProducer,
   updateGatewaySecret,
   removeProducer,
   setLastWebhookGateway,
@@ -92,6 +93,7 @@ export function ProducerCard({
   toggleProductActive: (formData: FormData) => void;
   updateProductAccess: (formData: FormData) => void;
   regenerateToken: (formData: FormData) => void;
+  updateProducer: (formData: FormData) => void;
   updateGatewaySecret: (formData: FormData) => void;
   removeProducer: (formData: FormData) => void;
   setLastWebhookGateway: (formData: FormData) => void;
@@ -101,6 +103,7 @@ export function ProducerCard({
     initialGateway(producer)
   );
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProducerName, setEditingProducerName] = useState(false);
 
   function selectGateway(key: (typeof GATEWAYS)[number]["key"]) {
     setActiveGateway(key);
@@ -117,24 +120,65 @@ export function ProducerCard({
   return (
     <Card>
       <div className="flex items-start justify-between gap-4">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex min-w-0 items-start gap-2 text-left"
-        >
-          {expanded ? (
-            <ChevronDown size={18} className="mt-0.5 shrink-0 text-muted" />
-          ) : (
-            <ChevronRight size={18} className="mt-0.5 shrink-0 text-muted" />
-          )}
-          <div>
-            <h3 className="text-base font-bold text-primary">{producer.name}</h3>
-            <p className="mt-0.5 text-xs text-secondary">
-              <span className="font-mono font-semibold text-secondary">{producer._count.leads}</span>{" "}
-              leads recebidos · {producer.products.length} produto(s)
-            </p>
+        <div className="flex min-w-0 items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-0.5 shrink-0"
+          >
+            {expanded ? (
+              <ChevronDown size={18} className="text-muted" />
+            ) : (
+              <ChevronRight size={18} className="text-muted" />
+            )}
+          </button>
+          <div className="min-w-0">
+            {editingProducerName ? (
+              <form
+                action={updateProducer}
+                className="flex items-center gap-1.5"
+                onSubmit={() => setEditingProducerName(false)}
+              >
+                <input type="hidden" name="id" value={producer.id} />
+                <Input
+                  name="name"
+                  defaultValue={producer.name}
+                  autoFocus
+                  className="h-8 py-1 text-base font-bold"
+                />
+                <Button type="submit" variant="secondary" className="shrink-0 py-1 text-xs">
+                  Salvar
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setEditingProducerName(false)}
+                  className="shrink-0 text-xs text-secondary hover:text-primary"
+                >
+                  Cancelar
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingProducerName(true)}
+                className="text-left hover:text-accent"
+                title="Editar nome do produtor"
+              >
+                <h3 className="text-base font-bold text-primary">{producer.name}</h3>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-0.5 block text-left"
+            >
+              <p className="text-xs text-secondary">
+                <span className="font-mono font-semibold text-secondary">{producer._count.leads}</span>{" "}
+                leads recebidos · {producer.products.length} produto(s)
+              </p>
+            </button>
           </div>
-        </button>
+        </div>
         <div className="flex shrink-0 gap-2">
           <form action={regenerateToken}>
             <input type="hidden" name="producerId" value={producer.id} />
