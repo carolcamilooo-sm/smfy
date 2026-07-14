@@ -193,15 +193,16 @@ model MessageTemplate {
  * sales-count ranking, not routed through the distribution engine.
  */
 model OperatorSale {
-  id           String   @id @default(cuid())
-  operatorId   String
-  operator     User     @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  gateway      Gateway
-  externalId   String
-  customerName String?
-  value        Decimal? @db.Decimal(10, 2)
-  rawPayload   Json
-  createdAt    DateTime @default(now())
+  id            String        @id @default(cuid())
+  operatorId    String
+  operator      User          @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  gateway       Gateway
+  externalId    String
+  customerName  String?
+  value         Decimal?      @db.Decimal(10, 2)
+  paymentStatus PaymentStatus @default(APPROVED)
+  rawPayload    Json
+  createdAt     DateTime      @default(now())
 
   @@unique([operatorId, gateway, externalId])
   @@index([operatorId, createdAt])

@@ -6,9 +6,14 @@ import type { Prisma } from "@/generated/prisma/client";
 /**
  * Personal sales webhook: each operator points their own gateway account
  * here to feed the sales-count ranking. Independent from the Lead
- * distribution pipeline — only approved (converted) sales are counted, and
- * there's no signature check (token-only), since this only affects a
- * gamification number, not lead routing.
+ * distribution pipeline — there's no signature check (token-only), since
+ * this only affects a gamification number, not lead routing.
+ *
+ * Approved and pending sales are both persisted (with their status), so a
+ * pending sale isn't silently dropped — it later flips to APPROVED/DECLINED
+ * via the same upsert when the gateway sends the follow-up event. Only
+ * unparseable/irrelevant events (declined, refunded, unrelated webhook
+ * types) are ignored outright.
  */
 export async function POST(
   request: NextRequest,
@@ -40,7 +45,10 @@ export async function POST(
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
 
-  if (!normalized || normalized.paymentStatus !== "APPROVED") {
+  if (
+    !normalized ||
+    (normalized.paymentStatus !== "APPROVED" && normalized.paymentStatus !== "PENDING")
+  ) {
     return NextResponse.json({ ignored: true }, { status: 200 });
   }
 
@@ -62,6 +70,7 @@ export async function POST(
     update: {
       customerName: normalized.customerName,
       value: normalized.value,
+      paymentStatus: normalized.paymentStatus,
       rawPayload,
     },
     create: {
@@ -70,6 +79,7 @@ export async function POST(
       externalId: normalized.externalId,
       customerName: normalized.customerName,
       value: normalized.value,
+      paymentStatus: normalized.paymentStatus,
       rawPayload,
     },
   });

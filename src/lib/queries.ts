@@ -618,7 +618,7 @@ export async function getSalesRanking(params: DateRangeParams): Promise<{
     }),
     prisma.operatorSale.groupBy({
       by: ["operatorId"],
-      where: { createdAt: { gte: range.from, lte: range.to } },
+      where: { createdAt: { gte: range.from, lte: range.to }, paymentStatus: "APPROVED" },
       _count: { _all: true },
     }),
   ]);
