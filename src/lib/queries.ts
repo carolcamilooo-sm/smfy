@@ -160,6 +160,9 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
         orderBy: { name: "asc" },
       }),
       prisma.lead.findMany({
+        // Always "hoje" (Brasília), independent of the period filter above —
+        // once the day rolls over, yesterday's leads belong in Histórico only.
+        where: { createdAt: { gte: startOfToday(), lte: endOfDay(new Date()) } },
         include: {
           assignedOperator: { select: { name: true } },
           producer: { select: { name: true } },

@@ -245,7 +245,7 @@ export default async function DashboardPage({
       <Card>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-primary">
-            Leads mais recentes
+            Leads mais recentes de hoje
           </h2>
           <Link href="/dashboard/historico" className="text-xs text-accent hover:underline">
             Ver histórico completo →
