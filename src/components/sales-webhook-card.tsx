@@ -18,12 +18,14 @@ export function SalesWebhookCard({
   token,
   approvedCount,
   pendingCount,
+  declinedCount,
   generateToken,
 }: {
   baseUrl: string;
   token: string | null;
   approvedCount: number;
   pendingCount: number;
+  declinedCount: number;
   generateToken: () => void;
 }) {
   const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>("kiwify");
@@ -34,8 +36,8 @@ export function SalesWebhookCard({
         <p className="mb-3 text-xs text-secondary">
           Gere um link e cadastre no gateway em que você recebe suas vendas
           (como afiliado ou produtor) — cada venda aprovada confirmada por
-          esse link conta pro seu número no ranking. Vendas pendentes também
-          ficam registradas aqui, marcadas como pendentes.
+          esse link conta pro seu número no ranking. Vendas pendentes e
+          recusadas também ficam registradas aqui, marcadas com o status.
         </p>
         <form action={generateToken}>
           <Button type="submit" variant="secondary">
@@ -55,7 +57,10 @@ export function SalesWebhookCard({
         aprovada(s){" "}
         <span className="text-muted">·</span>{" "}
         <span className="font-mono font-semibold text-warning">{pendingCount}</span>{" "}
-        pendente(s) registrada(s) por esse link até agora.
+        pendente(s){" "}
+        <span className="text-muted">·</span>{" "}
+        <span className="font-mono font-semibold text-danger">{declinedCount}</span>{" "}
+        recusada(s) registrada(s) por esse link até agora.
       </p>
       <div className="mb-3 flex flex-wrap gap-1.5 border-b border-border pb-3">
         {GATEWAYS.map((g) => (

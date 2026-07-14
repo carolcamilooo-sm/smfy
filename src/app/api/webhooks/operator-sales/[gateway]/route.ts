@@ -9,11 +9,11 @@ import type { Prisma } from "@/generated/prisma/client";
  * distribution pipeline — there's no signature check (token-only), since
  * this only affects a gamification number, not lead routing.
  *
- * Approved and pending sales are both persisted (with their status), so a
- * pending sale isn't silently dropped — it later flips to APPROVED/DECLINED
- * via the same upsert when the gateway sends the follow-up event. Only
- * unparseable/irrelevant events (declined, refunded, unrelated webhook
- * types) are ignored outright.
+ * Approved, pending and declined sales are all persisted (with their
+ * status), so nothing is silently dropped — a pending sale later flips to
+ * APPROVED/DECLINED via the same upsert when the gateway sends the
+ * follow-up event. Only unparseable/irrelevant events (refunds,
+ * chargebacks, unrelated webhook types) are ignored outright.
  */
 export async function POST(
   request: NextRequest,
@@ -45,10 +45,8 @@ export async function POST(
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
 
-  if (
-    !normalized ||
-    (normalized.paymentStatus !== "APPROVED" && normalized.paymentStatus !== "PENDING")
-  ) {
+  const TRACKED_STATUSES = ["APPROVED", "PENDING", "DECLINED"];
+  if (!normalized || !TRACKED_STATUSES.includes(normalized.paymentStatus)) {
     return NextResponse.json({ ignored: true }, { status: 200 });
   }
 

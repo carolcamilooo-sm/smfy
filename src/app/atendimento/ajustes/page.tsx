@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AjustesAtendentePage() {
   const session = await auth();
-  const [user, baseUrl, approvedCount, pendingCount] = await Promise.all([
+  const [user, baseUrl, approvedCount, pendingCount, declinedCount] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: session!.user.id } }),
     getBaseUrl(),
     prisma.operatorSale.count({
@@ -20,6 +20,9 @@ export default async function AjustesAtendentePage() {
     }),
     prisma.operatorSale.count({
       where: { operatorId: session!.user.id, paymentStatus: "PENDING" },
+    }),
+    prisma.operatorSale.count({
+      where: { operatorId: session!.user.id, paymentStatus: "DECLINED" },
     }),
   ]);
 
@@ -65,6 +68,7 @@ export default async function AjustesAtendentePage() {
           token={user.salesWebhookToken}
           approvedCount={approvedCount}
           pendingCount={pendingCount}
+          declinedCount={declinedCount}
           generateToken={generateSalesWebhookToken}
         />
       </Card>
