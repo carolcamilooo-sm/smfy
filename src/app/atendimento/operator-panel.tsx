@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CopyButton } from "@/components/copy-button";
 import { fillTemplate } from "@/lib/template";
 import { buildWhatsAppUrl } from "@/lib/phone";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -342,6 +343,7 @@ export function OperatorPanel({
                         >
                           Atender
                         </Button>
+                        <CopyButton value={lead.phone} title="Copiar número do lead" />
                         <Link
                           href={`/atendimento/chat/${lead.id}`}
                           className="text-xs text-secondary hover:text-accent"
