@@ -64,6 +64,7 @@ model User {
   notifyIdleWarning Boolean       @default(true)
   salesWebhookToken String?       @unique
   dashboardLayout String[]        @default([])
+  dashboardBlockWidths Json       @default("{}")
   lastActivityAt DateTime         @default(now())
   createdAt      DateTime         @default(now())
 

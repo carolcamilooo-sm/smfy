@@ -12,8 +12,8 @@ import { LeadVolumeChart } from "@/components/lead-volume-chart";
 import { DashboardSortable } from "@/components/dashboard-sortable";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
 import { BR_TIMEZONE } from "@/lib/date-br";
-import { normalizeDashboardLayout, type DashboardBlockKey } from "@/lib/dashboard-layout";
-import { updateDashboardLayout } from "./actions";
+import { normalizeDashboardLayout, normalizeDashboardWidths, type DashboardBlockKey } from "@/lib/dashboard-layout";
+import { updateDashboardLayout, updateDashboardBlockWidth } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -80,9 +80,13 @@ export default async function DashboardPage({
   const searchResults = q ? await searchLeads(q) : null;
 
   const currentUser = session
-    ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { dashboardLayout: true } })
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { dashboardLayout: true, dashboardBlockWidths: true },
+      })
     : null;
   const layout = normalizeDashboardLayout(currentUser?.dashboardLayout ?? []);
+  const widths = normalizeDashboardWidths(currentUser?.dashboardBlockWidths);
 
   const onlineCount = operatorSummaries.filter((op) => op.effectiveStatus !== "OFFLINE").length;
   const offlineCount = operatorSummaries.length - onlineCount;
@@ -295,7 +299,7 @@ export default async function DashboardPage({
 
     operadores: (
       <Card>
-        <div className="mb-4 flex items-center justify-between pr-8">
+        <div className="mb-4 flex items-center justify-between pr-16">
           <h2 className="text-sm font-semibold text-primary">Operadores</h2>
           <p className="text-xs">
             <span className="font-mono text-success">{onlineCount} online</span>
@@ -431,7 +435,13 @@ export default async function DashboardPage({
         </Card>
       </div>
 
-      <DashboardSortable order={layout} blocks={blocks} saveOrder={updateDashboardLayout} />
+      <DashboardSortable
+        order={layout}
+        widths={widths}
+        blocks={blocks}
+        saveOrder={updateDashboardLayout}
+        saveWidth={updateDashboardBlockWidth}
+      />
     </div>
   );
 }

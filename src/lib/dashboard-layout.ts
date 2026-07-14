@@ -25,3 +25,27 @@ export function normalizeDashboardLayout(saved: string[]): DashboardBlockKey[] {
   const missing = DASHBOARD_BLOCK_KEYS.filter((key) => !known.includes(key));
   return [...known, ...missing];
 }
+
+export type DashboardBlockWidth = "full" | "half";
+
+/** Matches the original hand-tuned layout: tables full-width, the two chart/stat pairs side by side. */
+export const DEFAULT_DASHBOARD_WIDTHS: Record<DashboardBlockKey, DashboardBlockWidth> = {
+  "buscar-atendimento": "full",
+  "leads-por-produtor": "full",
+  "volume-leads": "half",
+  "distribuicao-atendente": "half",
+  "leads-recentes": "half",
+  operadores: "half",
+};
+
+export function normalizeDashboardWidths(saved: unknown): Record<DashboardBlockKey, DashboardBlockWidth> {
+  const parsed = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
+  const widths = { ...DEFAULT_DASHBOARD_WIDTHS };
+  for (const key of DASHBOARD_BLOCK_KEYS) {
+    const value = parsed[key];
+    if (value === "full" || value === "half") {
+      widths[key] = value;
+    }
+  }
+  return widths;
+}
