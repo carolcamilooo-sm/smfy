@@ -46,16 +46,19 @@ function paymentStatusesForCategory(category: DistributionCategory): PaymentStat
   return ["PENDING", "OTHER"];
 }
 
+type ProductGrant = { operatorId: string; dailyLimit: number | null };
+
 /**
  * If a product has any explicit ProductAccess grants for this category,
  * only the granted operators are eligible — otherwise every operator is
  * (backward compatible: a product nobody configured behaves like before).
  * Declined/"pagamento recusado" leads aren't gated by product, only approved/pending.
+ * Each grant carries its own optional daily cap for that category.
  */
-async function allowedOperatorIdsForProduct(
+async function productGrantsForCategory(
   productId: string | null | undefined,
   category: DistributionCategory
-): Promise<Set<string> | null> {
+): Promise<ProductGrant[] | null> {
   if (!productId || category === "declined") return null;
 
   const grants = await prisma.productAccess.findMany({
@@ -63,10 +66,13 @@ async function allowedOperatorIdsForProduct(
       productId,
       ...(category === "approved" ? { allowApproved: true } : { allowPending: true }),
     },
-    select: { operatorId: true },
+    select: { operatorId: true, dailyLimitApproved: true, dailyLimitPending: true },
   });
   if (grants.length === 0) return null;
-  return new Set(grants.map((g) => g.operatorId));
+  return grants.map((g) => ({
+    operatorId: g.operatorId,
+    dailyLimit: category === "approved" ? g.dailyLimitApproved : g.dailyLimitPending,
+  }));
 }
 
 /**
@@ -82,7 +88,8 @@ export async function pickOperatorForLead(
   productId?: string | null
 ): Promise<User | null> {
   const category = categoryForPaymentStatus(paymentStatus);
-  const allowedIds = await allowedOperatorIdsForProduct(productId, category);
+  const grants = await productGrantsForCategory(productId, category);
+  const allowedIds = grants ? new Set(grants.map((g) => g.operatorId)) : null;
 
   const operators = await prisma.user.findMany({
     where: {
@@ -98,10 +105,41 @@ export async function pickOperatorForLead(
   let eligible = operators.filter((op) => getEffectiveStatus(op) === "ONLINE");
   if (eligible.length === 0) return null;
 
+  const todayStart = startOfToday();
+
+  // Cap filtering happens before the priority narrowing below: an operator
+  // who hit their product daily limit must drop out of the whole pool, not
+  // just lose to a same-priority-tier rival, so the lead can still fall
+  // back to any other liberado operator (priority or not) before WAITING.
+  if (productId && grants) {
+    const dailyLimitMap = new Map(grants.map((g) => [g.operatorId, g.dailyLimit]));
+    const capped = grants.filter((g) => g.dailyLimit != null).map((g) => g.operatorId);
+    if (capped.length > 0) {
+      const productCounts = await prisma.lead.groupBy({
+        by: ["assignedOperatorId"],
+        where: {
+          assignedOperatorId: { in: eligible.map((op) => op.id).filter((id) => capped.includes(id)) },
+          productId,
+          assignedAt: { gte: todayStart },
+          paymentStatus: { in: paymentStatusesForCategory(category) },
+        },
+        _count: { _all: true },
+      });
+      const productCountMap = new Map(
+        productCounts.map((c) => [c.assignedOperatorId as string, c._count._all])
+      );
+      eligible = eligible.filter((op) => {
+        const limit = dailyLimitMap.get(op.id);
+        if (limit == null) return true;
+        return (productCountMap.get(op.id) ?? 0) < limit;
+      });
+      if (eligible.length === 0) return null;
+    }
+  }
+
   const priorityEligible = eligible.filter((op) => op.priority);
   if (priorityEligible.length > 0) eligible = priorityEligible;
 
-  const todayStart = startOfToday();
   const counts = await prisma.lead.groupBy({
     by: ["assignedOperatorId"],
     where: {

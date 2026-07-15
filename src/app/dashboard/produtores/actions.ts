@@ -79,7 +79,22 @@ export async function toggleProductActive(formData: FormData) {
   revalidatePath("/dashboard/produtores");
 }
 
-/** Per-operator gate for a product: which categories (aprovados/pendentes) they're allowed to receive. */
+function parseDailyLimit(formData: FormData, field: string): number | null | undefined {
+  if (!formData.has(field)) return undefined;
+  const raw = String(formData.get(field)).trim();
+  if (raw === "") return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.floor(parsed);
+}
+
+/**
+ * Per-operator gate for a product: which categories (aprovados/pendentes)
+ * they're allowed to receive, plus an optional daily cap per category.
+ * dailyLimit* fields are optional in the FormData — omitted entirely by the
+ * Produtores page's simpler "Acesso" panel, so we only touch them when
+ * present (the Operadores page's panel always sends both).
+ */
 export async function updateProductAccess(formData: FormData) {
   await requireDashboardAccess();
 
@@ -87,17 +102,32 @@ export async function updateProductAccess(formData: FormData) {
   const operatorId = String(formData.get("operatorId"));
   const allowApproved = formData.get("allowApproved") === "on";
   const allowPending = formData.get("allowPending") === "on";
+  const dailyLimitApproved = parseDailyLimit(formData, "dailyLimitApproved");
+  const dailyLimitPending = parseDailyLimit(formData, "dailyLimitPending");
 
   if (!allowApproved && !allowPending) {
     await prisma.productAccess.deleteMany({ where: { productId, operatorId } });
   } else {
     await prisma.productAccess.upsert({
       where: { productId_operatorId: { productId, operatorId } },
-      update: { allowApproved, allowPending },
-      create: { productId, operatorId, allowApproved, allowPending },
+      update: {
+        allowApproved,
+        allowPending,
+        ...(dailyLimitApproved !== undefined ? { dailyLimitApproved } : {}),
+        ...(dailyLimitPending !== undefined ? { dailyLimitPending } : {}),
+      },
+      create: {
+        productId,
+        operatorId,
+        allowApproved,
+        allowPending,
+        dailyLimitApproved: dailyLimitApproved ?? null,
+        dailyLimitPending: dailyLimitPending ?? null,
+      },
     });
   }
   revalidatePath("/dashboard/produtores");
+  revalidatePath("/dashboard/operadores");
 }
 
 export async function regenerateToken(formData: FormData) {

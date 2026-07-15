@@ -1,14 +1,13 @@
-import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getEffectiveStatus } from "@/lib/distribution";
 import { getSalesRanking } from "@/lib/queries";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ConfirmForm } from "@/components/confirm-form";
 import { cn } from "@/lib/utils";
+import { OperatorRow } from "./operator-row";
+import { updateProductAccess } from "@/app/dashboard/produtores/actions";
 import {
   approveOperator,
   rejectOperator,
@@ -24,12 +23,6 @@ const RANKING_PERIODS = [
   { value: "7d", label: "Últimos 7 dias" },
   { value: "month", label: "Este mês" },
 ];
-
-function operatorStatusBadge(status: string) {
-  if (status === "ONLINE") return <Badge tone="green">Online</Badge>;
-  if (status === "IDLE") return <Badge tone="yellow">Ocioso</Badge>;
-  return <Badge tone="gray">Offline</Badge>;
-}
 
 function sumLabel(label: string, sum: number) {
   return (
@@ -52,31 +45,64 @@ export default async function OperadoresPage({
   searchParams: Promise<{ rankingPeriod?: string }>;
 }) {
   const { rankingPeriod } = await searchParams;
-  const [operators, pending, rejected, deactivated, { range: rankingRange, ranking }] = await Promise.all([
-    prisma.user.findMany({
-      where: { role: "OPERATOR", approvalStatus: "APPROVED", active: true },
-      include: { distributionRule: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.user.findMany({
-      where: { role: "OPERATOR", approvalStatus: "PENDING" },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.user.findMany({
-      where: { role: "OPERATOR", approvalStatus: "REJECTED" },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.findMany({
-      where: { role: "OPERATOR", approvalStatus: "APPROVED", active: false },
-      orderBy: { name: "asc" },
-    }),
-    getSalesRanking({ period: rankingPeriod }),
-  ]);
+  const [operators, pending, rejected, deactivated, products, productAccesses, { range: rankingRange, ranking }] =
+    await Promise.all([
+      prisma.user.findMany({
+        where: { role: "OPERATOR", approvalStatus: "APPROVED", active: true },
+        include: { distributionRule: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.user.findMany({
+        where: { role: "OPERATOR", approvalStatus: "PENDING" },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.user.findMany({
+        where: { role: "OPERATOR", approvalStatus: "REJECTED" },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.user.findMany({
+        where: { role: "OPERATOR", approvalStatus: "APPROVED", active: false },
+        orderBy: { name: "asc" },
+      }),
+      prisma.product.findMany({
+        where: { active: true, producer: { active: true } },
+        select: { id: true, name: true, producer: { select: { name: true } } },
+        orderBy: [{ producer: { name: "asc" } }, { name: "asc" }],
+      }),
+      prisma.productAccess.findMany({
+        select: {
+          productId: true,
+          operatorId: true,
+          allowApproved: true,
+          allowPending: true,
+          dailyLimitApproved: true,
+          dailyLimitPending: true,
+        },
+      }),
+      getSalesRanking({ period: rankingPeriod }),
+    ]);
 
   const active = operators.filter((op) => op.distributionRule?.active);
   const sumApproved = active.reduce((sum, op) => sum + (op.distributionRule?.weightApproved ?? 0), 0);
   const sumPending = active.reduce((sum, op) => sum + (op.distributionRule?.weightPending ?? 0), 0);
   const sumDeclined = active.reduce((sum, op) => sum + (op.distributionRule?.weightDeclined ?? 0), 0);
+
+  const productGroups = Array.from(
+    products
+      .reduce((acc, p) => {
+        const key = p.producer.name;
+        if (!acc.has(key)) acc.set(key, { producerName: key, products: [] as { id: string; name: string }[] });
+        acc.get(key)!.products.push({ id: p.id, name: p.name });
+        return acc;
+      }, new Map<string, { producerName: string; products: { id: string; name: string }[] }>())
+      .values()
+  );
+
+  const accessByOperator = new Map<string, Map<string, (typeof productAccesses)[number]>>();
+  for (const a of productAccesses) {
+    if (!accessByOperator.has(a.operatorId)) accessByOperator.set(a.operatorId, new Map());
+    accessByOperator.get(a.operatorId)!.set(a.productId, a);
+  }
 
   return (
     <div className="space-y-8">
@@ -137,7 +163,7 @@ export default async function OperadoresPage({
           esteja online e não esteja ocioso há mais de 15 minutos.
         </p>
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_5rem_5rem_5rem_auto_auto_auto_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
+          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_5rem_5rem_5rem_auto_auto_auto_auto_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
             <div className="text-xs text-secondary">Nome</div>
             <div className="text-xs text-secondary">E-mail</div>
             <div className="text-xs text-secondary">Status</div>
@@ -149,95 +175,23 @@ export default async function OperadoresPage({
             <div className="text-xs text-secondary">Atendente ativo</div>
             <div />
             <div />
+            <div />
 
             {operators.map((op) => (
-              <Fragment key={op.id}>
-                <form action={updateDistribution} className="contents">
-                  <input type="hidden" name="operatorId" value={op.id} />
-                  <div className="border-t border-border py-2 text-primary">{op.name}</div>
-                  <div className="border-t border-border py-2 text-secondary">
-                    {op.email}
-                  </div>
-                  <div className="border-t border-border py-2">
-                    {operatorStatusBadge(getEffectiveStatus(op))}
-                  </div>
-                  <div className="border-t border-border py-2">
-                    <Input
-                      type="number"
-                      name="weightApproved"
-                      min={0}
-                      max={100}
-                      defaultValue={op.distributionRule?.weightApproved ?? 0}
-                      className="w-16 font-mono"
-                    />
-                  </div>
-                  <div className="border-t border-border py-2">
-                    <Input
-                      type="number"
-                      name="weightPending"
-                      min={0}
-                      max={100}
-                      defaultValue={op.distributionRule?.weightPending ?? 0}
-                      className="w-16 font-mono"
-                    />
-                  </div>
-                  <div className="border-t border-border py-2">
-                    <Input
-                      type="number"
-                      name="weightDeclined"
-                      min={0}
-                      max={100}
-                      defaultValue={op.distributionRule?.weightDeclined ?? 0}
-                      className="w-16 font-mono"
-                    />
-                  </div>
-                  <div className="border-t border-border py-2">
-                    <input
-                      type="checkbox"
-                      name="active"
-                      defaultChecked={op.distributionRule?.active ?? true}
-                      className="h-4 w-4"
-                    />
-                  </div>
-                  <div className="border-t border-border py-2">
-                    <input
-                      type="checkbox"
-                      name="priority"
-                      defaultChecked={op.priority}
-                      className="h-4 w-4"
-                    />
-                  </div>
-                  <div className="border-t border-border py-2">
-                    <input
-                      type="checkbox"
-                      name="userActive"
-                      defaultChecked={op.active}
-                      className="h-4 w-4"
-                    />
-                  </div>
-                  <div className="border-t border-border py-2">
-                    <Button type="submit" variant="secondary">
-                      Salvar
-                    </Button>
-                  </div>
-                </form>
-                <ConfirmForm
-                  action={removeOperator}
-                  confirmMessage={`Remover "${op.name}" da equipe? Se ele já atendeu algum lead, a conta só fica desativada (histórico preservado); senão é excluída de vez.`}
-                  className="contents"
-                >
-                  <input type="hidden" name="operatorId" value={op.id} />
-                  <div className="border-t border-border py-2">
-                    <Button type="submit" variant="danger">
-                      Remover
-                    </Button>
-                  </div>
-                </ConfirmForm>
-              </Fragment>
+              <OperatorRow
+                key={op.id}
+                operator={op}
+                effectiveStatus={getEffectiveStatus(op)}
+                productGroups={productGroups}
+                accessByProductId={accessByOperator.get(op.id) ?? new Map()}
+                updateDistribution={updateDistribution}
+                updateProductAccess={updateProductAccess}
+                removeOperator={removeOperator}
+              />
             ))}
 
             {operators.length === 0 && (
-              <div className="col-span-11 py-4 text-center text-secondary">
+              <div className="col-span-12 py-4 text-center text-secondary">
                 Nenhum operador cadastrado ainda.
               </div>
             )}

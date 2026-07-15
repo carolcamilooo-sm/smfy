@@ -125,15 +125,24 @@ model Product {
   @@map("products")
 }
 
-/** Per-product, per-operator gate: which categories of that product's leads an operator is allowed to receive. */
+/**
+ * Per-product, per-operator gate: which categories of that product's leads
+ * an operator is allowed to receive, plus an optional daily cap per
+ * category (null = no cap, just the allow gate). Once an operator hits
+ * their cap for a product today, they're skipped in favor of another
+ * operator still under their cap; the limit resets at Brasília midnight
+ * since it's derived from today's assigned-lead count, not a stored tally.
+ */
 model ProductAccess {
-  id            String  @id @default(cuid())
-  productId     String
-  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  operatorId    String
-  operator      User    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  allowApproved Boolean @default(false)
-  allowPending  Boolean @default(false)
+  id                 String  @id @default(cuid())
+  productId          String
+  product            Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  operatorId         String
+  operator           User    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  allowApproved      Boolean @default(false)
+  allowPending       Boolean @default(false)
+  dailyLimitApproved Int?
+  dailyLimitPending  Int?
 
   @@unique([productId, operatorId])
   @@map("product_access")
