@@ -10,7 +10,10 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // O CLI (migrate, db push, studio) usa a conexão direta — migrations
+    // não funcionam bem via pooler em modo transaction. O app em runtime
+    // (src/lib/db.ts) lê DATABASE_URL direto do env, sem passar por aqui.
+    url: process.env["DIRECT_URL"],
     shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"],
   },
 });
