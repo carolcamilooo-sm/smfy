@@ -44,19 +44,12 @@ function formatWait(seconds: number) {
   return `${m}min ${String(s).padStart(2, "0")}s`;
 }
 
-function formatAvgResponse(seconds: number | null) {
-  if (seconds == null) return "—";
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}min ${String(seconds % 60).padStart(2, "0")}s`;
-}
-
 export function OperatorPanel({
   operatorId,
   initialQueue,
   templates,
   attendedToday,
   receivedToday,
-  avgFirstResponseSeconds,
   hasAttendWebhook,
 }: {
   operatorId: string;
@@ -64,7 +57,6 @@ export function OperatorPanel({
   templates: Template[];
   attendedToday: number;
   receivedToday: number;
-  avgFirstResponseSeconds: number | null;
   hasAttendWebhook: boolean;
 }) {
   const router = useRouter();
@@ -228,9 +220,10 @@ export function OperatorPanel({
           </p>
         </Card>
         <Card>
-          <p className="text-xs text-secondary">Minha 1ª resposta média</p>
+          <p className="text-xs text-secondary">Não atendidos</p>
+          {/* A fila só traz lead ASSIGNED, então o total dela já é o que falta atender. */}
           <p className="mt-2.5 font-mono text-3xl font-semibold text-primary">
-            {formatAvgResponse(avgFirstResponseSeconds)}
+            {initialQueue.length}
           </p>
         </Card>
       </div>

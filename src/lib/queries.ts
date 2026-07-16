@@ -90,7 +90,7 @@ function buildVolumeBuckets(
 export async function getOperatorData(operatorId: string) {
   const todayStart = startOfToday();
 
-  const [user, queue, templates, attendedToday, receivedToday, attendedLeadsToday] =
+  const [user, queue, templates, attendedToday, receivedToday] =
     await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id: operatorId } }),
       prisma.lead.findMany({
@@ -112,23 +112,7 @@ export async function getOperatorData(operatorId: string) {
       prisma.lead.count({
         where: { assignedOperatorId: operatorId, assignedAt: { gte: todayStart } },
       }),
-      prisma.lead.findMany({
-        where: {
-          assignedOperatorId: operatorId,
-          serviceStatus: "ATTENDED",
-          attendedAt: { gte: todayStart },
-        },
-        select: { assignedAt: true, attendedAt: true },
-      }),
     ]);
-
-  const responseTimes = attendedLeadsToday
-    .filter((l) => l.assignedAt && l.attendedAt)
-    .map((l) => (l.attendedAt!.getTime() - l.assignedAt!.getTime()) / 1000);
-  const avgFirstResponseSeconds =
-    responseTimes.length > 0
-      ? Math.round(responseTimes.reduce((sum, s) => sum + s, 0) / responseTimes.length)
-      : null;
 
   return {
     status: user.status,
@@ -136,7 +120,6 @@ export async function getOperatorData(operatorId: string) {
     templates,
     attendedToday,
     receivedToday,
-    avgFirstResponseSeconds,
     hasAttendWebhook: Boolean(user.attendWebhookUrl),
   };
 }
