@@ -5,27 +5,28 @@ import { Badge } from "@/components/ui/badge";
 const GATEWAYS = [
   {
     name: "Kiwify",
-    status: "complete" as const,
     description:
       "Parser completo: status de pagamento, cliente, produto e valor são lidos automaticamente. Suporta verificação de assinatura opcional (variável KIWIFY_WEBHOOK_SECRET).",
   },
   {
     name: "PerfectPay",
-    status: "complete" as const,
     description:
       "Parser completo: status da venda (aprovado, pendente, pagamento recusado, cancelado etc.), cliente, produto e valor são lidos automaticamente. Suporta verificação por public token, configurável por produtor em Produtores.",
   },
   {
     name: "Disrupty",
-    status: "generic" as const,
     description:
-      "Parser genérico: tenta reconhecer os campos mais comuns (id, status, cliente, telefone, produto, valor). Envie um payload de exemplo real para eu ajustar o parser específico.",
+      "Parser completo: status da transação (pago, pendente, em processamento, recusado, cancelado, falha, estorno, reembolso pendente), cliente, produto e valor são lidos automaticamente, com pagamento recusado indo pro balde de recuperação. Eventos de saque são ignorados. A Disrupty não assina os webhooks — quem autentica a chamada é o token da própria URL.",
   },
   {
     name: "SMPay",
-    status: "complete" as const,
     description:
       "Parser completo: eventos de venda, PIX, boleto, reembolso e assinatura são lidos automaticamente, com pagamento recusado indo pro balde de recuperação. Suporta verificação de assinatura opcional (variável SMPAY_WEBHOOK_SECRET).",
+  },
+  {
+    name: "PayT",
+    description:
+      "Parser completo: status da venda (aguardando pagamento, pago, recusado, cancelado, expirado, reembolso, chargeback), cliente, produto e valor são lidos automaticamente, com pagamento recusado indo pro balde de recuperação. Postbacks de teste e de carrinho abandonado são ignorados. Suporta verificação por integration key, configurável por produtor em Produtores.",
   },
 ];
 
@@ -49,11 +50,7 @@ export default function IntegracoesPage() {
           <Card key={gw.name}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-base font-bold text-primary">{gw.name}</h3>
-              {gw.status === "complete" ? (
-                <Badge tone="green">Parser completo</Badge>
-              ) : (
-                <Badge tone="yellow">Parser genérico</Badge>
-              )}
+              <Badge tone="green">Parser completo</Badge>
             </div>
             <p className="text-xs leading-relaxed text-secondary">{gw.description}</p>
           </Card>
