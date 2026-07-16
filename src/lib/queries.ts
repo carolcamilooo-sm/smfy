@@ -31,6 +31,10 @@ export function resolveDateRange(params: DateRangeParams): DateRange {
     const monday = shiftDateString(todayStr, -diffToMonday);
     return { from: startOfDayString(monday), to: endOfDay(now), bucket: "day", period };
   }
+  if (period === "3d") {
+    const from = shiftDateString(todayStr, -2);
+    return { from: startOfDayString(from), to: endOfDay(now), bucket: "day", period };
+  }
   if (period === "7d") {
     const from = shiftDateString(todayStr, -6);
     return { from: startOfDayString(from), to: endOfDay(now), bucket: "day", period };
@@ -233,6 +237,16 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
   return { range, stats, volume, operatorSummaries, leads, producerSummary };
 }
 
+/** Quantos dias o Histórico do atendente enxerga, contando hoje. */
+export const OPERATOR_HISTORY_DAYS = 3;
+
+/** Início do dia mais antigo que o atendente pode ver, em Brasília. */
+function OPERATOR_HISTORY_FLOOR(): Date {
+  return startOfDayString(
+    shiftDateString(brDateString(new Date()), -(OPERATOR_HISTORY_DAYS - 1))
+  );
+}
+
 export async function getOperatorHistory(
   operatorId: string,
   params: DateRangeParams & { q?: string }
@@ -240,10 +254,15 @@ export async function getOperatorHistory(
   const range = resolveDateRange(params);
   const q = params.q?.trim();
 
+  // Teto rígido de 3 dias: nada mais antigo aparece aqui, nem via ?period= na
+  // URL. Os leads seguem no banco e continuam visíveis pro admin em
+  // /dashboard/historico — o limite é só desta tela.
+  const from = range.from < OPERATOR_HISTORY_FLOOR() ? OPERATOR_HISTORY_FLOOR() : range.from;
+
   const where: Prisma.LeadWhereInput = {
     assignedOperatorId: operatorId,
     serviceStatus: "ATTENDED",
-    attendedAt: { gte: range.from, lte: range.to },
+    attendedAt: { gte: from, lte: range.to },
   };
 
   if (q) {

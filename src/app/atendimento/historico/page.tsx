@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { getOperatorHistory } from "@/lib/queries";
+import { getOperatorHistory, OPERATOR_HISTORY_DAYS } from "@/lib/queries";
 import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,7 @@ export const dynamic = "force-dynamic";
 
 const PERIODS = [
   { key: "today", label: "Hoje" },
-  { key: "7d", label: "Últimos 7 dias" },
-  { key: "month", label: "Este mês" },
+  { key: "3d", label: "Últimos 3 dias" },
 ];
 
 function paymentTypeBadge(status: string) {
@@ -50,7 +49,9 @@ export default async function HistoricoAtendentePage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-primary">Histórico</h1>
-        <p className="text-sm text-secondary">Leads que você já atendeu.</p>
+        <p className="text-sm text-secondary">
+          Leads que você já atendeu nos últimos {OPERATOR_HISTORY_DAYS} dias.
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
