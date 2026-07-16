@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { Logo } from "@/components/logo";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SidebarClock } from "@/components/sidebar-clock";
+import { SpotlightPointer } from "@/components/ui/spotlight-card";
 import { SignOutButton } from "@/components/sign-out-button";
 
 function initials(name: string) {
@@ -47,7 +48,10 @@ export default async function DashboardLayout({
           </div>
         </div>
       </aside>
-      <main className="flex-1 px-6 py-8">{children}</main>
+      <main data-glow-scope className="flex-1 px-6 py-8">
+        <SpotlightPointer />
+        {children}
+      </main>
     </div>
   );
 }

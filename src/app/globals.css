@@ -106,3 +106,76 @@ body {
   color: var(--foreground);
   font-family: var(--font-sora), system-ui, sans-serif;
 }
+
+/* Spotlight dos cards de dashboard.
+ *
+ * As coordenadas vêm do <SpotlightPointer>, que publica --glow-x/y no <html>
+ * a partir de um único listener. Com background-attachment: fixed o gradiente
+ * fica ancorado na viewport, então cada card revela só o trecho da luz que
+ * passa por cima dele — uma luz só varrendo a tela, não uma por card.
+ *
+ * O tom acompanha --glow-xp (0→1 na horizontal), passeando dentro do roxo da
+ * marca em vez de percorrer o círculo cromático inteiro.
+ */
+[data-glow-scope] [data-card] {
+  --glow-hue: calc(280 + (var(--glow-xp, 0.5) * 40));
+  /* Só aqui: os pseudo-elementos precisam de contexto de posicionamento, mas o
+     Card é usado no app inteiro e criar esse contexto fora do escopo poderia
+     deslocar filhos absolutos de outras telas. */
+  position: relative;
+}
+
+[data-glow-scope] [data-card]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: radial-gradient(
+    260px circle at var(--glow-x, -1000px) var(--glow-y, -1000px),
+    oklch(0.75 0.22 var(--glow-hue, 300) / 0.85),
+    transparent 65%
+  );
+  background-attachment: fixed;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+[data-glow-scope] [data-card]::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    240px circle at var(--glow-x, -1000px) var(--glow-y, -1000px),
+    oklch(0.6 0.2 var(--glow-hue, 300) / 0.1),
+    transparent 70%
+  );
+  background-attachment: fixed;
+}
+
+/* Sem o efeito, o conteúdo ficaria atrás dos pseudo-elementos. */
+[data-glow-scope] [data-card] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Sem ponteiro fino (toque) o brilho nunca se move — só pesaria a pintura. */
+@media (hover: none) {
+  [data-glow-scope] [data-card]::before,
+  [data-glow-scope] [data-card]::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-glow-scope] [data-card]::before,
+  [data-glow-scope] [data-card]::after {
+    display: none;
+  }
+}

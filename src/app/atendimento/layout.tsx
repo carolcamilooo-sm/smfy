@@ -5,6 +5,7 @@ import { OperatorSidebarNav } from "@/components/operator-sidebar-nav";
 import { OnlineStatusCard } from "@/components/online-status-card";
 import { OperatorLeadToast } from "@/components/operator-lead-toast";
 import { SidebarClock } from "@/components/sidebar-clock";
+import { SpotlightPointer } from "@/components/ui/spotlight-card";
 import { SignOutButton } from "@/components/sign-out-button";
 
 function initials(name: string) {
@@ -55,7 +56,8 @@ export default async function AtendimentoLayout({
           </div>
         </div>
       </aside>
-      <main className="relative flex-1 px-10 py-8">
+      <main data-glow-scope className="relative flex-1 px-10 py-8">
+        <SpotlightPointer />
         <OperatorLeadToast operatorId={session!.user.id} notifySound={user.notifySound} />
         {children}
       </main>
