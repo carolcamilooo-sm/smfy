@@ -6,7 +6,9 @@ import { ProfileForm } from "@/components/profile-form";
 import { PasswordForm } from "@/components/password-form";
 import { NotificationToggle } from "@/components/notification-toggle";
 import { SalesWebhookCard } from "@/components/sales-webhook-card";
+import { AttendWebhookCard } from "@/components/attend-webhook-card";
 import { generateSalesWebhookToken } from "./sales-webhook-actions";
+import { saveAttendWebhookUrl } from "./attend-webhook-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +73,13 @@ export default async function AjustesAtendentePage() {
           declinedCount={declinedCount}
           generateToken={generateSalesWebhookToken}
         />
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-title">
+          Meu webhook de atendimento
+        </h2>
+        <AttendWebhookCard url={user.attendWebhookUrl} saveUrl={saveAttendWebhookUrl} />
       </Card>
     </div>
   );

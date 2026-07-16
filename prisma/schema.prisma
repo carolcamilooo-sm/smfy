@@ -63,6 +63,10 @@ model User {
   notifySound       Boolean       @default(true)
   notifyIdleWarning Boolean       @default(true)
   salesWebhookToken String?       @unique
+  // URL da extensão do atendente. O app faz POST do lead aqui quando ele
+  // usa "Atender por hook" — é saída, ao contrário do salesWebhookToken,
+  // que é entrada (o gateway posta pra cá).
+  attendWebhookUrl  String?
   dashboardLayout String[]        @default([])
   dashboardBlockWidths Json       @default("{}")
   lastActivityAt DateTime         @default(now())

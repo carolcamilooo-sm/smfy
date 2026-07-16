@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { notifyAdmin, EVENTS } from "@/lib/realtime";
+import { markLeadAttended } from "@/lib/attend";
 
 export async function POST(
   request: NextRequest,
@@ -21,28 +21,7 @@ export async function POST(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const [updated] = await prisma.$transaction([
-    prisma.lead.update({
-      where: { id },
-      data: {
-        serviceStatus: "ATTENDED",
-        attendedAt: new Date(),
-        usedTemplateId: templateId,
-      },
-    }),
-    prisma.leadEvent.create({
-      data: { leadId: id, operatorId: session.user.id, action: "ATTENDED" },
-    }),
-    prisma.user.update({
-      where: { id: session.user.id },
-      data: { lastActivityAt: new Date() },
-    }),
-  ]);
-
-  await notifyAdmin(EVENTS.leadAttended, {
-    ...updated,
-    value: updated.value ? Number(updated.value) : null,
-  });
+  await markLeadAttended(id, session.user.id, templateId);
 
   return NextResponse.json({ ok: true });
 }
