@@ -9,6 +9,7 @@ type PayTPayload = {
   customer?: {
     name?: string;
     email?: string;
+    fake_email?: boolean;
     phone?: string;
   };
   product?: { name?: string };
@@ -29,7 +30,7 @@ const STATUS_MAP: Partial<Record<string, NormalizedPaymentStatus>> = {
   expired: "DECLINED",
   chargeback_presented: "OTHER",
   chargeback: "OTHER",
-  peding_refund: "OTHER",
+  peding_refund: "OTHER", // typo is PayT's own — that's the literal value they send
   one_click_buy_refunded: "OTHER",
   refunded: "OTHER",
   one_click_buy_refunded_partial: "OTHER",
@@ -58,7 +59,8 @@ export const paytAdapter: GatewayAdapter = {
       externalId,
       customerName: data.customer?.name ?? "Sem nome",
       phone,
-      email: data.customer?.email,
+      // PayT fills in a throwaway address when the buyer ticks "não tenho email"
+      email: data.customer?.fake_email ? undefined : data.customer?.email,
       product: data.product?.name,
       value: typeof totalPrice === "number" ? totalPrice / 100 : undefined,
       paymentStatus,
