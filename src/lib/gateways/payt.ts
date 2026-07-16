@@ -27,7 +27,9 @@ const STATUS_MAP: Partial<Record<string, NormalizedPaymentStatus>> = {
   refused: "DECLINED",
   one_click_buy_refused: "DECLINED",
   canceled: "DECLINED",
-  expired: "DECLINED",
+  // Pix/boleto que o cliente gerou e não pagou até vencer. Não é recusa do
+  // banco — é justamente o lead a recuperar, então entra como pendente.
+  expired: "PENDING",
   chargeback_presented: "OTHER",
   chargeback: "OTHER",
   peding_refund: "OTHER", // typo is PayT's own — that's the literal value they send
