@@ -137,6 +137,7 @@ export async function getOperatorData(operatorId: string) {
     attendedToday,
     receivedToday,
     avgFirstResponseSeconds,
+    hasAttendWebhook: Boolean(user.attendWebhookUrl),
   };
 }
 

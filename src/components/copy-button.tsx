@@ -8,10 +8,13 @@ export function CopyButton({
   value,
   className,
   title,
+  onCopied,
 }: {
   value: string;
   className?: string;
   title?: string;
+  /** Chamado depois que o valor foi pro clipboard. */
+  onCopied?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -19,6 +22,7 @@ export function CopyButton({
     await navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+    onCopied?.();
   }
 
   return (

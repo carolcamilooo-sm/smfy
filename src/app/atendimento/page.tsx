@@ -14,6 +14,7 @@ export default async function AtendimentoPage() {
       attendedToday={data.attendedToday}
       receivedToday={data.receivedToday}
       avgFirstResponseSeconds={data.avgFirstResponseSeconds}
+      hasAttendWebhook={data.hasAttendWebhook}
     />
   );
 }

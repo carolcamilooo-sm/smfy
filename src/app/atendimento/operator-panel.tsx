@@ -57,6 +57,7 @@ export function OperatorPanel({
   attendedToday,
   receivedToday,
   avgFirstResponseSeconds,
+  hasAttendWebhook,
 }: {
   operatorId: string;
   initialQueue: QueueLead[];
@@ -64,6 +65,7 @@ export function OperatorPanel({
   attendedToday: number;
   receivedToday: number;
   avgFirstResponseSeconds: number | null;
+  hasAttendWebhook: boolean;
 }) {
   const router = useRouter();
   const [selectedTemplate, setSelectedTemplate] = useState<Record<string, string>>({});
@@ -148,6 +150,50 @@ export function OperatorPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateId: template.id }),
+      });
+      router.refresh();
+    } finally {
+      setPending(null);
+    }
+  }
+
+  // A extensão é quem fala com o cliente aqui — o servidor só entrega o lead
+  // pra ela. Se ela não confirmar, o lead continua na fila (o erro vem da API).
+  async function handleAtenderHook(lead: QueueLead) {
+    const templateId = selectedTemplate[lead.id] ?? templates[0]?.id;
+
+    setPending(lead.id);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/atender-hook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "Não foi possível atender por hook. O lead segue na fila.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setPending(null);
+    }
+  }
+
+  // Copiar o número não marca nada sozinho: quem confirma é o atendente, senão
+  // um clique sem querer tiraria o lead da fila.
+  async function handleCopyAtender(lead: QueueLead) {
+    const ok = confirm(
+      `Número de ${lead.customerName} copiado. Marcar como atendido? Ele sai da sua fila.`
+    );
+    if (!ok) return;
+
+    setPending(lead.id);
+    try {
+      await fetch(`/api/leads/${lead.id}/atender`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
       });
       router.refresh();
     } finally {
@@ -343,7 +389,21 @@ export function OperatorPanel({
                         >
                           Atender
                         </Button>
-                        <CopyButton value={lead.phone} title="Copiar número do lead" />
+                        {hasAttendWebhook && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleAtenderHook(lead)}
+                            disabled={pending === lead.id}
+                            title="Enviar esse lead pra sua extensão"
+                          >
+                            Atender por hook
+                          </Button>
+                        )}
+                        <CopyButton
+                          value={lead.phone}
+                          title="Copiar número do lead"
+                          onCopied={() => handleCopyAtender(lead)}
+                        />
                         <Link
                           href={`/atendimento/chat/${lead.id}`}
                           className="text-xs text-secondary hover:text-accent"
