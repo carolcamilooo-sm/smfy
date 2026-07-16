@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -397,12 +396,6 @@ export function OperatorPanel({
                           title="Copiar número do lead"
                           onCopied={() => handleCopyAtender(lead)}
                         />
-                        <Link
-                          href={`/atendimento/chat/${lead.id}`}
-                          className="text-xs text-secondary hover:text-accent"
-                        >
-                          Prévia do chat
-                        </Link>
                       </div>
                     </td>
                   </tr>
