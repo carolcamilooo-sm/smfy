@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { normalizeDocument } from "./types";
 import type { GatewayAdapter, NormalizedLead, NormalizedPaymentStatus } from "./types";
 
 type PerfectPayPayload = {
@@ -12,6 +13,7 @@ type PerfectPayPayload = {
     email?: string;
     phone_area_code?: string;
     phone_number?: string;
+    identification_number?: string;
   };
 };
 
@@ -57,6 +59,7 @@ export const perfectpayAdapter: GatewayAdapter = {
       customerName: data.customer?.full_name ?? "Sem nome",
       phone: `${areaCode}${number}`,
       email: data.customer?.email,
+      document: normalizeDocument(data.customer?.identification_number),
       product: data.product?.name,
       value: typeof data.sale_amount === "number" ? data.sale_amount : undefined,
       paymentStatus,

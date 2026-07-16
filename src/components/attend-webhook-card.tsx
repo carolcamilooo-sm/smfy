@@ -18,6 +18,10 @@ export function AttendWebhookCard({
         é enviado pra sua extensão e só é marcado como atendido se ela confirmar
         o recebimento. Deixe em branco pra desligar.
       </p>
+      <p className="mb-3 text-[11px] text-muted">
+        Enviamos: nome, telefone, e-mail, CPF, produto (nome, código e sigla),
+        produtor, valor, status do pagamento e a mensagem já montada.
+      </p>
       <form action={saveUrl} className="flex gap-1.5">
         <div className="min-w-0 flex-1">
           <span className="mb-1 block text-[11px] text-muted">

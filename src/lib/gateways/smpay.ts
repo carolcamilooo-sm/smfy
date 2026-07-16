@@ -1,10 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { normalizeDocument } from "./types";
 import type { GatewayAdapter, NormalizedLead, NormalizedPaymentStatus } from "./types";
 
 type SMPayCustomer = {
   name?: string;
   email?: string;
   phone?: string | null;
+  document?: string;
 };
 
 type SMPayData = {
@@ -65,6 +67,7 @@ export const smpayAdapter: GatewayAdapter = {
       customerName: String((isCart ? data.buyer_name : data.customer?.name) ?? "Sem nome"),
       phone: String(phone),
       email: isCart ? undefined : data.customer?.email,
+      document: isCart ? undefined : normalizeDocument(data.customer?.document),
       product: data.product_name,
       value:
         typeof data.gross_amount === "number"

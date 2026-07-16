@@ -161,6 +161,8 @@ model Lead {
   customerName       String
   phone              String
   email              String?
+  /// CPF/CNPJ do comprador, só dígitos.
+  document           String?
   product             String?
   productId           String?
   productRef          Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)

@@ -1,3 +1,4 @@
+import { normalizeDocument } from "./types";
 import type { GatewayAdapter, NormalizedLead, NormalizedPaymentStatus } from "./types";
 
 type DisruptySaleItem = {
@@ -9,6 +10,7 @@ type DisruptyPayload = {
   amount?: number;
   status?: string;
   paymentMethod?: string;
+  customerDocument?: string;
   customerEmail?: string;
   customerName?: string;
   customerPhone?: string;
@@ -49,6 +51,7 @@ export const disruptyAdapter: GatewayAdapter = {
       customerName: data.customerName ?? "Sem nome",
       phone: String(phone),
       email: data.customerEmail,
+      document: normalizeDocument(data.customerDocument),
       product: data.saleItems?.[0]?.title,
       value: typeof data.amount === "number" ? data.amount / 100 : undefined,
       paymentStatus,

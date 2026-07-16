@@ -22,7 +22,12 @@ export async function POST(
   const [lead, operator] = await Promise.all([
     prisma.lead.findUnique({
       where: { id },
-      include: { producer: { select: { name: true } } },
+      include: {
+        producer: { select: { name: true } },
+        // productRef só existe quando o nome do produto do gateway casou com um
+        // produto cadastrado; é dele que vêm código e sigla.
+        productRef: { select: { codigo: true, sigla: true } },
+      },
     }),
     prisma.user.findUniqueOrThrow({ where: { id: session.user.id } }),
   ]);
@@ -56,7 +61,10 @@ export async function POST(
     name: lead.customerName,
     phone: lead.phone,
     email: lead.email,
+    document: lead.document,
     product: lead.product,
+    productCode: lead.productRef?.codigo ?? null,
+    productSigla: lead.productRef?.sigla ?? null,
     producer: lead.producer?.name ?? null,
     value: lead.value ? Number(lead.value) : null,
     paymentStatus: lead.paymentStatus,

@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { normalizeDocument } from "./types";
 import type { GatewayAdapter, NormalizedLead, NormalizedPaymentStatus } from "./types";
 
 type PayTPayload = {
@@ -11,6 +12,7 @@ type PayTPayload = {
     email?: string;
     fake_email?: boolean;
     phone?: string;
+    doc?: string;
   };
   product?: { name?: string };
   transaction?: {
@@ -63,6 +65,7 @@ export const paytAdapter: GatewayAdapter = {
       phone,
       // PayT fills in a throwaway address when the buyer ticks "não tenho email"
       email: data.customer?.fake_email ? undefined : data.customer?.email,
+      document: normalizeDocument(data.customer?.doc),
       product: data.product?.name,
       value: typeof totalPrice === "number" ? totalPrice / 100 : undefined,
       paymentStatus,
