@@ -243,7 +243,9 @@ export default async function DashboardPage({
 
     "leads-recentes": (
       <Card>
-        <div className="mb-4 flex items-center justify-between">
+        {/* pr-16 abre espaço pros controles de arrastar/redimensionar, que
+            flutuam sobre o canto superior direito do card. */}
+        <div className="mb-4 flex items-center justify-between pr-16">
           <h2 className="text-sm font-semibold text-title">
             Leads mais recentes de hoje
           </h2>
