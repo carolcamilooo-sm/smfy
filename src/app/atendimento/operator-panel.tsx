@@ -10,7 +10,7 @@ import { fillTemplate } from "@/lib/template";
 import { buildWhatsAppUrl } from "@/lib/phone";
 import { getPusherClient } from "@/lib/pusher-client";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
-import { brDateString, shiftDateString, startOfDayString } from "@/lib/date-br";
+import { brDateString, shiftDateString, startOfDayString, BR_TIMEZONE } from "@/lib/date-br";
 
 type QueueLead = {
   id: string;
@@ -21,6 +21,9 @@ type QueueLead = {
   value: number | null;
   gateway: string;
   paymentStatus: string;
+  /** Quando a venda entrou no sistema — não confundir com assignedAt, que é
+   *  quando ela caiu nesta fila. Podem estar dias separados. */
+  createdAt: string | Date;
   assignedAt: string | Date | null;
 };
 
@@ -41,6 +44,22 @@ function formatWait(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}min ${String(s).padStart(2, "0")}s`;
+}
+
+/** "14/07 09:32" no relógio de Brasília, independente do fuso da máquina. */
+function formatArrival(date: string | Date) {
+  const d = new Date(date);
+  const dia = d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: BR_TIMEZONE,
+  });
+  const hora = d.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: BR_TIMEZONE,
+  });
+  return `${dia} ${hora}`;
 }
 
 export function OperatorPanel({
@@ -329,6 +348,7 @@ export function OperatorPanel({
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-secondary">
+                <th className="pb-2.5">Chegou em</th>
                 <th className="pb-2.5">Nome</th>
                 <th className="pb-2.5">Produto</th>
                 <th className="pb-2.5">Tipo</th>
@@ -344,6 +364,9 @@ export function OperatorPanel({
                 const waitSeconds = Math.max(0, Math.floor((now - assignedAtMs) / 1000));
                 return (
                   <tr key={lead.id} className="border-b border-border last:border-0">
+                    <td className="py-3.5 pr-2 whitespace-nowrap font-mono text-xs text-secondary">
+                      {formatArrival(lead.createdAt)}
+                    </td>
                     <td className="py-3.5 pr-2 font-semibold text-primary">
                       {lead.customerName}
                     </td>
@@ -403,7 +426,7 @@ export function OperatorPanel({
               })}
               {filteredQueue.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-secondary">
+                  <td colSpan={8} className="py-6 text-center text-secondary">
                     {initialQueue.length === 0
                       ? "Nenhum lead na sua fila no momento."
                       : "Nenhum lead bate com esses filtros."}
