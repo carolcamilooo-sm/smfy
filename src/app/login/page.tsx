@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,14 +15,30 @@ const ERROR_MESSAGES: Record<string, string> = {
   inactive: "Sua conta foi desativada. Fale com o administrador.",
 };
 
+/** Só o e-mail é guardado — senha nunca. */
+const REMEMBERED_EMAIL_KEY = "smfy:remembered-email";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  // Campos não-controlados: o valor vive no DOM. Assim o e-mail lembrado entra
+  // sem re-render, e o gerenciador de senhas do navegador consegue preencher —
+  // com value controlado por state, o autofill dele é sobrescrito.
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const rememberRef = useRef<HTMLInputElement>(null);
+
+  // Só no cliente: localStorage não existe no servidor.
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (!saved) return;
+    if (emailRef.current) emailRef.current.value = saved;
+    if (rememberRef.current) rememberRef.current.checked = true;
+    passwordRef.current?.focus(); // o e-mail já está lá; falta a senha
+  }, []);
 
   function onCardMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     const el = cardRef.current;
@@ -37,9 +53,10 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
+    const email = emailRef.current?.value ?? "";
     const result = await signIn("credentials", {
       email,
-      password,
+      password: passwordRef.current?.value ?? "",
       redirect: false,
     });
 
@@ -51,6 +68,10 @@ export default function LoginPage() {
       );
       return;
     }
+
+    // Só grava depois do login dar certo — senão guardaria e-mail digitado errado.
+    if (rememberRef.current?.checked) localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+    else localStorage.removeItem(REMEMBERED_EMAIL_KEY);
 
     router.push("/");
     router.refresh();
@@ -94,12 +115,13 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
+                ref={emailRef}
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 placeholder="voce@empresa.com"
                 required
                 autoFocus
+                autoComplete="username"
                 className="w-full rounded-[10px] border border-border bg-app px-4 py-3.5 text-[15px] text-primary placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
@@ -111,11 +133,12 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   id="password"
+                  ref={passwordRef}
+                  name="password"
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  autoComplete="current-password"
                   className="w-full rounded-[10px] border border-border bg-app px-4 py-3.5 pr-11 text-[15px] text-primary focus:border-accent focus:outline-none"
                 />
                 <button
@@ -127,9 +150,20 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <p className="mt-2 text-right text-xs text-muted">
-                Esqueceu a senha? Fale com o administrador.
-              </p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-secondary">
+                  <input
+                    type="checkbox"
+                    ref={rememberRef}
+                    name="remember"
+                    className="h-3.5 w-3.5 accent-[oklch(0.6_0.25_300)]"
+                  />
+                  Lembrar meu e-mail
+                </label>
+                <p className="text-right text-xs text-muted">
+                  Esqueceu a senha? Fale com o administrador.
+                </p>
+              </div>
             </div>
 
             {error && <p className="text-sm text-danger">{error}</p>}
