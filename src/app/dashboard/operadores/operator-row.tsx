@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmForm } from "@/components/confirm-form";
 
@@ -121,9 +122,7 @@ export function OperatorRow({
           />
         </div>
         <div className="border-t border-border py-2">
-          <Button type="submit" variant="secondary">
-            Salvar
-          </Button>
+          <SubmitButton variant="secondary">Salvar</SubmitButton>
         </div>
       </form>
       <div className="border-t border-border py-2">
@@ -217,9 +216,9 @@ export function OperatorRow({
                               className="w-16 py-1 font-mono text-xs"
                             />
                           </label>
-                          <Button type="submit" variant="secondary" className="ml-auto py-1 text-xs">
+                          <SubmitButton variant="secondary" className="ml-auto py-1 text-xs">
                             Salvar
-                          </Button>
+                          </SubmitButton>
                         </form>
                       );
                     })}

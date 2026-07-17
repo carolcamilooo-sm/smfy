@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 
 export function AttendWebhookCard({
   url,
@@ -35,9 +35,9 @@ export function AttendWebhookCard({
             className="font-mono text-[11px]"
           />
         </div>
-        <Button type="submit" variant="secondary" className="self-end">
+        <SubmitButton variant="secondary" className="self-end">
           Salvar
-        </Button>
+        </SubmitButton>
       </form>
       <p className="mt-2 text-[11px] text-muted">
         Quem chama essa URL é o servidor do SMFY, não o seu navegador — então

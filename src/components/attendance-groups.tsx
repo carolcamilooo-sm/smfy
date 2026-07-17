@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { ConfirmForm } from "@/components/confirm-form";
 
 type Group = {
@@ -20,20 +21,6 @@ type Operator = { id: string; name: string; groupId: string | null };
 
 type Action = (fd: FormData) => Promise<void>;
 
-/** Botão de salvar que mostra "✓ Salvo" depois que a action completa. */
-function SaveButton({ pending, saved }: { pending: boolean; saved: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <Button type="submit" variant="secondary" disabled={pending} className="py-1 text-xs">
-        {pending ? "Salvando…" : "Salvar"}
-      </Button>
-      {saved && !pending && (
-        <span className="text-xs font-semibold text-success">✓ Salvo</span>
-      )}
-    </div>
-  );
-}
-
 /** Um grupo: nome, pesos, ativo e as contas (checkboxes) — tudo salvo junto. */
 function GroupForm({
   group,
@@ -46,18 +33,8 @@ function GroupForm({
   updateGroup: Action;
   removeGroup: Action;
 }) {
-  // useActionState (não useState+effect): a action retorna um carimbo, e é ele
-  // que sinaliza "salvou" — sem escrever state dentro de efeito.
-  const [savedAt, formAction, pending] = useActionState<number, FormData>(
-    async (_prev, fd) => {
-      await updateGroup(fd);
-      return Date.now();
-    },
-    0
-  );
-
   return (
-    <form action={formAction} className="rounded-lg border border-border bg-app p-3">
+    <form action={updateGroup} className="rounded-lg border border-border bg-app p-3">
       <input type="hidden" name="id" value={group.id} />
 
       <div className="flex flex-wrap items-end gap-3">
@@ -125,7 +102,9 @@ function GroupForm({
       </div>
 
       <div className="mt-3 flex items-center gap-3 border-t border-border pt-3">
-        <SaveButton pending={pending} saved={savedAt > 0} />
+        <SubmitButton variant="secondary" className="py-1 text-xs">
+          Salvar
+        </SubmitButton>
         <ConfirmForm
           action={removeGroup}
           confirmMessage={`Remover o grupo "${group.name}"? As ${group.memberCount} conta(s) voltam a ser individuais (peso próprio).`}
@@ -141,22 +120,12 @@ function GroupForm({
 }
 
 function CreateGroupForm({ createGroup }: { createGroup: Action }) {
-  const [savedAt, formAction, pending] = useActionState<number, FormData>(
-    async (_prev, fd) => {
-      await createGroup(fd);
-      return Date.now();
-    },
-    0
-  );
   return (
-    <form action={formAction} className="flex items-center gap-2">
+    <form action={createGroup} className="flex items-center gap-2">
       <Input name="name" placeholder="Nome do novo grupo (ex: Tales)" className="h-9" required />
-      <Button type="submit" variant="secondary" disabled={pending}>
-        {pending ? "Criando…" : "Criar grupo"}
-      </Button>
-      {savedAt > 0 && !pending && (
-        <span className="text-xs font-semibold text-success">✓ Criado</span>
-      )}
+      <SubmitButton variant="secondary" savedMessage="Grupo criado" pendingLabel="Criando…">
+        Criar grupo
+      </SubmitButton>
     </form>
   );
 }

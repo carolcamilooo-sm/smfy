@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { createTemplate, updateTemplate, deleteTemplate } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +56,7 @@ export default async function MensagensAtendentePage() {
             />
           </div>
           <div className="flex justify-end">
-            <Button type="submit">Salvar mensagem</Button>
+            <SubmitButton>Salvar mensagem</SubmitButton>
           </div>
         </form>
       </Card>
@@ -94,9 +95,9 @@ export default async function MensagensAtendentePage() {
                   className={textareaClass}
                 />
                 <div className="flex justify-end gap-2">
-                  <Button type="submit" variant="secondary">
+                  <SubmitButton variant="secondary">
                     Salvar
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
               <form action={deleteTemplate} className="mt-2 flex justify-end">

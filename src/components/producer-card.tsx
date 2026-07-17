@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/copy-button";
 import { ConfirmForm } from "@/components/confirm-form";
@@ -146,9 +147,9 @@ export function ProducerCard({
                   autoFocus
                   className="h-8 py-1 text-base font-bold"
                 />
-                <Button type="submit" variant="secondary" className="shrink-0 py-1 text-xs">
+                <SubmitButton variant="secondary" className="shrink-0 py-1 text-xs">
                   Salvar
-                </Button>
+                </SubmitButton>
                 <button
                   type="button"
                   onClick={() => setEditingProducerName(false)}
@@ -238,9 +239,9 @@ export function ProducerCard({
                                   autoFocus
                                   className="h-7 py-1 text-sm"
                                 />
-                                <Button type="submit" variant="secondary" className="shrink-0 py-1 text-xs">
+                                <SubmitButton variant="secondary" className="shrink-0 py-1 text-xs">
                                   Salvar
-                                </Button>
+                                </SubmitButton>
                                 <button
                                   type="button"
                                   onClick={() => setEditingProductId(null)}
@@ -341,9 +342,9 @@ export function ProducerCard({
                                           />
                                           Pendentes
                                         </label>
-                                        <Button type="submit" variant="secondary" className="ml-auto py-1 text-xs">
+                                        <SubmitButton variant="secondary" className="ml-auto py-1 text-xs">
                                           Salvar
-                                        </Button>
+                                        </SubmitButton>
                                       </form>
                                     );
                                   })}
@@ -425,9 +426,9 @@ export function ProducerCard({
                     className="font-mono text-[11px]"
                   />
                 </div>
-                <Button type="submit" variant="secondary" className="self-end">
+                <SubmitButton variant="secondary" className="self-end">
                   Salvar
-                </Button>
+                </SubmitButton>
               </form>
             )}
           </div>

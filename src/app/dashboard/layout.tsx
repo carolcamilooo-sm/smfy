@@ -6,6 +6,7 @@ import { SpotlightPointer } from "@/components/ui/spotlight-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getTheme } from "@/lib/theme";
 import { SignOutButton } from "@/components/sign-out-button";
+import { Toaster } from "@/components/toaster";
 
 function initials(name: string) {
   return name
@@ -62,6 +63,7 @@ export default async function DashboardLayout({
         <SpotlightPointer />
         {children}
       </main>
+      <Toaster />
     </div>
   );
 }
