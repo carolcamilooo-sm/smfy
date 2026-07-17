@@ -23,9 +23,6 @@
   --color-warning: oklch(0.85 0.15 80);
   --color-danger: oklch(0.7 0.22 25);
 
-  /* Paradas do gradiente animado da logo. */
-  --logo-a: oklch(0.78 0.23 300);
-  --logo-b: oklch(0.97 0.01 293);
 }
 
 /* Claro. Mantém o mesmo matiz roxo (280–300) e inverte a luminosidade; os
@@ -51,9 +48,6 @@
   --color-warning: oklch(0.62 0.15 80);
   --color-danger: oklch(0.55 0.22 25);
 
-  /* A logo escurece: o quase-branco do meio do gradiente sumiria no claro. */
-  --logo-a: oklch(0.5 0.25 300);
-  --logo-b: oklch(0.68 0.18 320);
 }
 
 /* O botão de tema manda os dois rótulos no HTML e deixa o CSS escolher — assim
@@ -92,12 +86,6 @@
 
   --font-sans: var(--font-sora);
   --font-mono: var(--font-ibm-plex-mono);
-}
-
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 @keyframes fadeUp {

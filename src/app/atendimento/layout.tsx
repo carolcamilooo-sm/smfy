@@ -37,7 +37,9 @@ export default async function AtendimentoLayout({
     <div data-theme-root data-theme={theme} className="flex min-h-screen bg-app">
       <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-app p-4">
         <div className="mb-6 px-2">
-          <Logo className="text-2xl" />
+          {/* h-12 e não menos: o "SMFY" é pequeno dentro do lockup, e abaixo
+              disso o texto fica ilegível. Ainda sobra folga na sidebar. */}
+          <Logo className="h-12" />
         </div>
 
         <OperatorSidebarNav />
