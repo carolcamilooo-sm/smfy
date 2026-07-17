@@ -107,3 +107,46 @@ export async function updateDistribution(formData: FormData) {
 
   revalidatePath("/dashboard/operadores");
 }
+
+export async function createGroup(formData: FormData) {
+  await requireDashboardAccess();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+  await prisma.attendanceGroup.create({ data: { name } });
+  revalidatePath("/dashboard/operadores");
+}
+
+export async function updateGroup(formData: FormData) {
+  await requireDashboardAccess();
+  const id = String(formData.get("id"));
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+  await prisma.attendanceGroup.update({
+    where: { id },
+    data: {
+      name,
+      weightApproved: clampPercent(formData.get("weightApproved")),
+      weightPending: clampPercent(formData.get("weightPending")),
+      weightDeclined: clampPercent(formData.get("weightDeclined")),
+      active: formData.get("active") === "on",
+    },
+  });
+  revalidatePath("/dashboard/operadores");
+}
+
+export async function removeGroup(formData: FormData) {
+  await requireDashboardAccess();
+  const id = String(formData.get("id"));
+  // onDelete: SetNull no schema devolve as contas ao modo individual.
+  await prisma.attendanceGroup.delete({ where: { id } });
+  revalidatePath("/dashboard/operadores");
+}
+
+export async function setOperatorGroup(formData: FormData) {
+  await requireDashboardAccess();
+  const operatorId = String(formData.get("operatorId"));
+  const raw = String(formData.get("groupId") ?? "");
+  const groupId = raw === "" ? null : raw;
+  await prisma.user.update({ where: { id: operatorId }, data: { groupId } });
+  revalidatePath("/dashboard/operadores");
+}

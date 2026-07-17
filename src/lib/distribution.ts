@@ -24,20 +24,48 @@ export function categoryForPaymentStatus(status: PaymentStatus): DistributionCat
   return "pending";
 }
 
-function weightForCategory(
-  rule: { weightApproved: number; weightPending: number; weightDeclined: number } | null | undefined,
-  category: DistributionCategory
-): number {
+type CategoryWeights = {
+  weightApproved: number;
+  weightPending: number;
+  weightDeclined: number;
+} | null | undefined;
+
+function weightForCategory(rule: CategoryWeights, category: DistributionCategory): number {
   if (!rule) return 1;
   if (category === "approved") return rule.weightApproved;
   if (category === "declined") return rule.weightDeclined;
   return rule.weightPending;
 }
 
+/**
+ * Peso efetivo de uma conta na distribuição. Numa conta de grupo, é a % do
+ * grupo dividida pelas contas do grupo elegíveis pra ESTE lead — então o total
+ * do grupo se mantém quando uma conta cai (as outras absorvem), e as contas do
+ * grupo dividem entre si por igual. Fora de grupo, é a regra individual.
+ */
+export function effectiveWeight(
+  op: { groupId: string | null; group: CategoryWeights; distributionRule: CategoryWeights },
+  category: DistributionCategory,
+  groupEligibleCount: Map<string, number>
+): number {
+  if (op.groupId && op.group) {
+    const n = groupEligibleCount.get(op.groupId) ?? 1;
+    return weightForCategory(op.group, category) / n;
+  }
+  return weightForCategory(op.distributionRule, category);
+}
+
 function distributionRuleFilterForCategory(category: DistributionCategory) {
   if (category === "approved") return { active: true, weightApproved: { gt: 0 } };
   if (category === "declined") return { active: true, weightDeclined: { gt: 0 } };
   return { active: true, weightPending: { gt: 0 } };
+}
+
+/** Campo de peso da categoria, pra filtrar grupos com peso > 0. */
+function weightFieldForCategory(category: DistributionCategory) {
+  if (category === "approved") return "weightApproved" as const;
+  if (category === "declined") return "weightDeclined" as const;
+  return "weightPending" as const;
 }
 
 function paymentStatusesForCategory(category: DistributionCategory): PaymentStatus[] {
@@ -91,15 +119,22 @@ export async function pickOperatorForLead(
   const grants = await productGrantsForCategory(productId, category);
   const allowedIds = grants ? new Set(grants.map((g) => g.operatorId)) : null;
 
+  const weightField = weightFieldForCategory(category);
   const operators = await prisma.user.findMany({
     where: {
       role: "OPERATOR",
       status: "ONLINE",
       active: true,
       ...(allowedIds ? { id: { in: Array.from(allowedIds) } } : {}),
-      distributionRule: distributionRuleFilterForCategory(category),
+      // Elegível se tem peso individual > 0 (conta solta) OU está num grupo
+      // ativo com peso > 0 na categoria. Contas de grupo têm a regra individual
+      // zerada — o peso delas vem do grupo.
+      OR: [
+        { groupId: null, distributionRule: distributionRuleFilterForCategory(category) },
+        { group: { is: { active: true, [weightField]: { gt: 0 } } } },
+      ],
     },
-    include: { distributionRule: true },
+    include: { distributionRule: true, group: true },
   });
 
   let eligible = operators.filter((op) => getEffectiveStatus(op) === "ONLINE");
@@ -153,12 +188,20 @@ export async function pickOperatorForLead(
     counts.map((c) => [c.assignedOperatorId as string, c._count._all])
   );
 
+  // Conta quantas contas de cada grupo sobraram elegíveis (após online, acesso,
+  // cap e a estreita por prioridade acima). É por esse número que a % do grupo
+  // se divide — então se metade do grupo caiu, a outra metade pesa o dobro.
+  const groupEligibleCount = new Map<string, number>();
+  for (const op of eligible) {
+    if (op.groupId) groupEligibleCount.set(op.groupId, (groupEligibleCount.get(op.groupId) ?? 0) + 1);
+  }
+
   let chosen = eligible[0];
   let bestRatio = Infinity;
   for (const op of eligible) {
-    const weight = weightForCategory(op.distributionRule, category);
+    const weight = effectiveWeight(op, category, groupEligibleCount);
     const assignedToday = countMap.get(op.id) ?? 0;
-    const ratio = assignedToday / weight;
+    const ratio = weight > 0 ? assignedToday / weight : Infinity;
     if (ratio < bestRatio) {
       bestRatio = ratio;
       chosen = op;

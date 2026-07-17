@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { OperatorRow } from "./operator-row";
+import { AttendanceGroups } from "@/components/attendance-groups";
 import { updateProductAccess } from "@/app/dashboard/produtores/actions";
 import {
   approveOperator,
@@ -14,6 +15,10 @@ import {
   removeOperator,
   reactivateOperator,
   updateDistribution,
+  createGroup,
+  updateGroup,
+  removeGroup,
+  setOperatorGroup,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +50,7 @@ export default async function OperadoresPage({
   searchParams: Promise<{ rankingPeriod?: string }>;
 }) {
   const { rankingPeriod } = await searchParams;
-  const [operators, pending, rejected, deactivated, products, productAccesses, { range: rankingRange, ranking }] =
+  const [operators, pending, rejected, deactivated, products, productAccesses, groups, { range: rankingRange, ranking }] =
     await Promise.all([
       prisma.user.findMany({
         where: { role: "OPERATOR", approvalStatus: "APPROVED", active: true },
@@ -79,13 +84,38 @@ export default async function OperadoresPage({
           dailyLimitPending: true,
         },
       }),
+      prisma.attendanceGroup.findMany({
+        orderBy: { name: "asc" },
+        include: { _count: { select: { members: true } } },
+      }),
       getSalesRanking({ period: rankingPeriod }),
     ]);
 
-  const active = operators.filter((op) => op.distributionRule?.active);
-  const sumApproved = active.reduce((sum, op) => sum + (op.distributionRule?.weightApproved ?? 0), 0);
-  const sumPending = active.reduce((sum, op) => sum + (op.distributionRule?.weightPending ?? 0), 0);
-  const sumDeclined = active.reduce((sum, op) => sum + (op.distributionRule?.weightDeclined ?? 0), 0);
+  // A soma junta as contas individuais (sem grupo, distrib. ativa) com os
+  // grupos ativos — cada grupo conta uma vez, porque a % dele é do grupo todo,
+  // não de cada conta. Contas em grupo não entram individualmente.
+  const activeIndividual = operators.filter((op) => !op.groupId && op.distributionRule?.active);
+  const activeGroups = groups.filter((g) => g.active);
+  const sumApproved =
+    activeIndividual.reduce((s, op) => s + (op.distributionRule?.weightApproved ?? 0), 0) +
+    activeGroups.reduce((s, g) => s + g.weightApproved, 0);
+  const sumPending =
+    activeIndividual.reduce((s, op) => s + (op.distributionRule?.weightPending ?? 0), 0) +
+    activeGroups.reduce((s, g) => s + g.weightPending, 0);
+  const sumDeclined =
+    activeIndividual.reduce((s, op) => s + (op.distributionRule?.weightDeclined ?? 0), 0) +
+    activeGroups.reduce((s, g) => s + g.weightDeclined, 0);
+
+  const groupsForUi = groups.map((g) => ({
+    id: g.id,
+    name: g.name,
+    weightApproved: g.weightApproved,
+    weightPending: g.weightPending,
+    weightDeclined: g.weightDeclined,
+    active: g.active,
+    memberCount: g._count.members,
+  }));
+  const operatorsForGroups = operators.map((op) => ({ id: op.id, name: op.name, groupId: op.groupId }));
 
   const productGroups = Array.from(
     products
@@ -151,6 +181,15 @@ export default async function OperadoresPage({
           </div>
         )}
       </Card>
+
+      <AttendanceGroups
+        groups={groupsForUi}
+        operators={operatorsForGroups}
+        createGroup={createGroup}
+        updateGroup={updateGroup}
+        removeGroup={removeGroup}
+        setOperatorGroup={setOperatorGroup}
+      />
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-title">
