@@ -1,23 +1,15 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * Lockup da marca: hexágono + SMFY. A altura vem pelo className (h-8, h-14…)
- * e a largura acompanha sozinha — o PNG já vem aparado, sem margem em volta.
+ * Lockup da marca: hexágono + SMFY, com o gradiente animado atravessando.
  *
- * unoptimized porque é um asset local pequeno e fixo: passar pelo otimizador
- * da Vercel a cada tamanho não pagaria a conta.
+ * Não é <img>: o PNG entra como máscara CSS (ver .logo-mark no globals.css) e
+ * o que se vê é o gradiente animado recortado pela silhueta da logo. É o que
+ * permite a cor correr, como no antigo lockup em texto — a contrapartida é que
+ * as cores originais do arquivo não aparecem, só a forma.
+ *
+ * A altura vem pelo className (h-12, h-14…) e a largura sai do aspect-ratio.
  */
 export function Logo({ className }: { className?: string }) {
-  return (
-    <Image
-      src="/logo.png"
-      alt="SMFY"
-      width={700}
-      height={411}
-      priority
-      unoptimized
-      className={cn("w-auto object-contain", className)}
-    />
-  );
+  return <span role="img" aria-label="SMFY" className={cn("logo-mark", className)} />;
 }
