@@ -20,7 +20,7 @@ export function LeadVolumeChart({
         <BarChart data={data}>
           <XAxis
             dataKey="label"
-            stroke="oklch(0.65 0.02 280)"
+            stroke="var(--color-text-secondary)"
             fontSize={12}
             fontFamily="var(--font-ibm-plex-mono)"
             tickLine={false}
@@ -28,7 +28,7 @@ export function LeadVolumeChart({
           />
           <YAxis
             allowDecimals={false}
-            stroke="oklch(0.65 0.02 280)"
+            stroke="var(--color-text-secondary)"
             fontSize={12}
             fontFamily="var(--font-ibm-plex-mono)"
             tickLine={false}
@@ -36,17 +36,19 @@ export function LeadVolumeChart({
             width={28}
           />
           <Tooltip
-            cursor={{ fill: "oklch(0.97 0.01 293 / 0.05)" }}
+            // Realce fraco atrás da barra sob o cursor — o alpha é o efeito,
+            // sem ele o retângulo cobriria a barra.
+            cursor={{ fill: "color-mix(in oklch, var(--color-text-primary) 5%, transparent)" }}
             contentStyle={{
-              background: "oklch(0.18 0.015 280)",
-              border: "1px solid oklch(0.24 0.02 280)",
+              background: "var(--color-surface-raised)",
+              border: "1px solid var(--color-border)",
               borderRadius: 8,
               fontSize: 12,
               fontFamily: "var(--font-ibm-plex-mono)",
             }}
-            labelStyle={{ color: "oklch(0.65 0.02 280)" }}
+            labelStyle={{ color: "var(--color-text-secondary)" }}
           />
-          <Bar dataKey="count" fill="oklch(0.72 0.25 300)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="count" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

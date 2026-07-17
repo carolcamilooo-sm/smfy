@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Escuro é o padrão: vale pro app inteiro e é o único tema do login, do
+   cadastro e da landing, que têm partículas e glow feitos pro escuro. O tema
+   claro é opcional e só existe dentro dos painéis (ver [data-theme="light"]). */
 :root {
   --background: oklch(0.14 0.01 280);
   --foreground: oklch(0.97 0.01 293);
@@ -19,6 +22,54 @@
   --color-success: oklch(0.75 0.19 150);
   --color-warning: oklch(0.85 0.15 80);
   --color-danger: oklch(0.7 0.22 25);
+
+  /* Paradas do gradiente animado da logo. */
+  --logo-a: oklch(0.78 0.23 300);
+  --logo-b: oklch(0.97 0.01 293);
+}
+
+/* Claro. Mantém o mesmo matiz roxo (280–300) e inverte a luminosidade; os
+   tons de destaque escurecem, porque o que contrastava com fundo escuro
+   sumiria no claro. */
+[data-theme="light"] {
+  --background: oklch(0.98 0.004 280);
+  --foreground: oklch(0.22 0.02 280);
+  --brand: oklch(0.55 0.25 300);
+
+  --color-app: oklch(0.98 0.004 280);
+  --color-surface: oklch(1 0 0);
+  --color-surface-raised: oklch(0.96 0.006 280);
+  --color-border: oklch(0.9 0.008 280);
+
+  --color-text-primary: oklch(0.22 0.02 280);
+  --color-text-secondary: oklch(0.47 0.02 280);
+  --color-text-muted: oklch(0.6 0.015 280);
+  --color-text-title: oklch(0.45 0.16 300);
+
+  --color-accent: oklch(0.55 0.25 300);
+  --color-success: oklch(0.55 0.17 150);
+  --color-warning: oklch(0.62 0.15 80);
+  --color-danger: oklch(0.55 0.22 25);
+
+  /* A logo escurece: o quase-branco do meio do gradiente sumiria no claro. */
+  --logo-a: oklch(0.5 0.25 300);
+  --logo-b: oklch(0.68 0.18 320);
+}
+
+/* O botão de tema manda os dois rótulos no HTML e deixa o CSS escolher — assim
+   o markup do servidor e o do cliente são idênticos e a hidratação não quebra
+   (ver o comentário em theme-toggle.tsx). Escuro é o padrão, então quando não
+   há data-theme algum o rótulo "Tema claro" é o certo. */
+.theme-when-light {
+  display: none;
+}
+
+[data-theme="light"] .theme-when-dark {
+  display: none;
+}
+
+[data-theme="light"] .theme-when-light {
+  display: flex;
 }
 
 @theme inline {
@@ -119,6 +170,8 @@ body {
  */
 [data-glow-scope] [data-card] {
   --glow-hue: calc(280 + (var(--glow-xp, 0.5) * 40));
+  /* Luminosidade do brilho: no claro precisa escurecer, senão some no fundo. */
+  --glow-l: 0.75;
   /* Só aqui: os pseudo-elementos precisam de contexto de posicionamento, mas o
      Card é usado no app inteiro e criar esse contexto fora do escopo poderia
      deslocar filhos absolutos de outras telas. */
@@ -135,7 +188,7 @@ body {
   pointer-events: none;
   background: radial-gradient(
     260px circle at var(--glow-x, -1000px) var(--glow-y, -1000px),
-    oklch(0.75 0.22 var(--glow-hue, 300) / 0.85),
+    oklch(var(--glow-l, 0.75) 0.22 var(--glow-hue, 300) / 0.85),
     transparent 65%
   );
   background-attachment: fixed;
@@ -153,13 +206,17 @@ body {
   pointer-events: none;
   background: radial-gradient(
     240px circle at var(--glow-x, -1000px) var(--glow-y, -1000px),
-    oklch(0.6 0.2 var(--glow-hue, 300) / 0.1),
+    oklch(var(--glow-l, 0.75) 0.2 var(--glow-hue, 300) / 0.1),
     transparent 70%
   );
   background-attachment: fixed;
 }
 
-/* Sem o efeito, o conteúdo ficaria atrás dos pseudo-elementos. */
+[data-theme="light"] [data-glow-scope] [data-card] {
+  --glow-l: 0.55;
+}
+
+/* Sem isso o conteúdo do card ficaria atrás dos pseudo-elementos. */
 [data-glow-scope] [data-card] > * {
   position: relative;
   z-index: 1;

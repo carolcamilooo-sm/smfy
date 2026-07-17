@@ -8,8 +8,10 @@ export function Logo({ className }: { className?: string }) {
         className
       )}
       style={{
+        // As paradas vêm de var pra escurecerem no tema claro — o gradiente
+        // original tem quase-branco no meio, que sumia em fundo claro.
         backgroundImage:
-          "linear-gradient(135deg, oklch(0.78 0.23 300), oklch(0.97 0.01 293), oklch(0.78 0.23 300))",
+          "linear-gradient(135deg, var(--logo-a), var(--logo-b), var(--logo-a))",
         animation: "gradientShift 4s ease-in-out infinite",
       }}
     >
