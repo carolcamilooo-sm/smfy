@@ -12,6 +12,11 @@ export async function POST(
 ) {
   const { gateway } = await context.params;
   const raw = await request.text();
-  console.log(`[webhook-debug:${gateway}] BODY: ${raw.slice(0, 4000)}`);
+  const token = request.nextUrl.searchParams.get("token");
+  // Loga se o ?token= veio (mascarado) e o corpo cru, pra distinguir de uma vez
+  // "chegou sem token" (401 na rota real) de "chegou com formato inesperado".
+  console.log(
+    `[webhook-debug:${gateway}] token=${token ? token.slice(0, 6) + "…(" + token.length + ")" : "AUSENTE"} BODY: ${raw.slice(0, 4000)}`
+  );
   return NextResponse.json({ ok: true, debug: true });
 }
