@@ -83,7 +83,7 @@ export default function LoginPage() {
 
       <div className="relative z-10 flex flex-col items-center px-6 py-14">
         <Link href="/" className="mb-16 w-fit" style={{ animation: "fadeUp 0.6s ease-out both" }}>
-          <Logo className="h-14" />
+          <Logo className="h-20" />
         </Link>
 
         <div

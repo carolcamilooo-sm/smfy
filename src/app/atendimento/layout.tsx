@@ -36,7 +36,7 @@ export default async function AtendimentoLayout({
     // pintado, sem piscar. bg-app cobre o fundo do body, que fica escuro atrás.
     <div data-theme-root data-theme={theme} className="flex min-h-screen bg-app">
       <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-app p-4">
-        <div className="mb-6 px-2">
+        <div className="mb-6 flex justify-center">
           {/* h-12 e não menos: o "SMFY" é pequeno dentro do lockup, e abaixo
               disso o texto fica ilegível. Ainda sobra folga na sidebar. */}
           <Logo className="h-12" />

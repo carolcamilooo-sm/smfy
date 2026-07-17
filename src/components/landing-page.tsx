@@ -99,8 +99,7 @@ export function LandingPage() {
           <span>Equipe</span>
           <span>Preços</span>
         </div>
-        {/* Menor que nas sidebars: aqui é um nav horizontal, o espaço é a altura. */}
-        <Logo className="h-10 justify-self-center" />
+        <Logo className="h-14 justify-self-center" />
         <div className="flex items-center gap-4 justify-self-end">
           <Link href="/login" className="text-sm text-primary/90 hover:text-accent">
             Entrar
