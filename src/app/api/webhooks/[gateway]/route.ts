@@ -59,6 +59,9 @@ export async function POST(
   }
 
   if (!normalized) {
+    // TEMPORÁRIO: loga o corpo cru quando o parser descarta, pra descobrir por
+    // que 100% dos webhooks da Disrupty caem aqui. Remover após identificar.
+    console.log(`[webhook-ignored:${gateway}] BODY: ${rawBody.slice(0, 3000)}`);
     return NextResponse.json({ ignored: true }, { status: 200 });
   }
 
