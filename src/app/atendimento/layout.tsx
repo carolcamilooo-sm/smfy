@@ -5,6 +5,7 @@ import { OperatorSidebarNav } from "@/components/operator-sidebar-nav";
 import { OnlineStatusCard } from "@/components/online-status-card";
 import { OperatorLeadToast } from "@/components/operator-lead-toast";
 import { SidebarClock } from "@/components/sidebar-clock";
+import { SidebarShell } from "@/components/sidebar-shell";
 import { SpotlightPointer } from "@/components/ui/spotlight-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getTheme } from "@/lib/theme";
@@ -35,10 +36,9 @@ export default async function AtendimentoLayout({
     // data-theme aqui, e não no <html>: o servidor já entrega o tema escolhido
     // pintado, sem piscar. bg-app cobre o fundo do body, que fica escuro atrás.
     <div data-theme-root data-theme={theme} className="flex min-h-screen bg-app">
-      {/* sticky + h-screen: a barra acompanha o scroll da página em vez de
-          subir junto. overflow-y-auto pra ela rolar por dentro se não couber. */}
-      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-app p-4">
-        <div className="mb-6 flex justify-center">
+      <SidebarShell>
+        {/* No celular a marca já aparece no cabeçalho da gaveta. */}
+        <div className="mb-6 hidden justify-center md:flex">
           {/* h-12 e não menos: o "SMFY" é pequeno dentro do lockup, e abaixo
               disso o texto fica ilegível. Ainda sobra folga na sidebar. */}
           <Logo className="h-12" />
@@ -68,8 +68,10 @@ export default async function AtendimentoLayout({
             <SignOutButton />
           </div>
         </div>
-      </aside>
-      <main data-glow-scope className="relative flex-1 px-10 py-8">
+      </SidebarShell>
+      {/* pt-20 no celular: o conteúdo começa abaixo do cabeçalho fixo de 56px.
+          min-w-0 impede que uma tabela larga estique o flex e empurre a barra. */}
+      <main data-glow-scope className="relative min-w-0 flex-1 px-4 pb-8 pt-20 md:px-10 md:py-8">
         <SpotlightPointer />
         <OperatorLeadToast operatorId={session!.user.id} notifySound={user.notifySound} />
         {children}

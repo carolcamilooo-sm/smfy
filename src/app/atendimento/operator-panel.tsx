@@ -325,7 +325,79 @@ export function OperatorPanel({
             </div>
           )}
         </div>
-        <div className="overflow-x-auto">
+        {/* No celular a tabela teria ~640px e só rolaria de lado; cada lead vira
+            um card empilhado, com as mesmas ações. */}
+        <div className="flex flex-col gap-3 md:hidden">
+          {filteredQueue.map((lead) => {
+            const assignedAtMs = lead.assignedAt ? new Date(lead.assignedAt).getTime() : now;
+            const waitSeconds = Math.max(0, Math.floor((now - assignedAtMs) / 1000));
+            return (
+              <div key={lead.id} className="rounded-xl border border-border bg-app p-3.5">
+                <div className="mb-1 flex items-start justify-between gap-2">
+                  <p className="font-semibold text-primary">{lead.customerName}</p>
+                  {paymentTypeBadge(lead.paymentStatus)}
+                </div>
+                <p className="mb-2 text-sm font-semibold text-accent">
+                  {lead.product
+                    ? `${lead.product} — ${lead.producer?.name ?? "-"}`
+                    : lead.producer?.name ?? "-"}
+                </p>
+                <p className="mb-3 font-mono text-xs font-semibold text-warning">
+                  esperando há {formatWait(waitSeconds)}
+                </p>
+
+                <select
+                  className="mb-3 w-full rounded-md border border-border bg-surface px-2 py-2 text-xs text-primary focus:border-accent focus:outline-none"
+                  value={selectedTemplate[lead.id] ?? templates[0]?.id ?? ""}
+                  onChange={(e) =>
+                    setSelectedTemplate((prev) => ({ ...prev, [lead.id]: e.target.value }))
+                  }
+                >
+                  {templates.length === 0 && <option value="">Nenhuma mensagem</option>}
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    onClick={() => handleAtender(lead)}
+                    disabled={pending === lead.id || templates.length === 0}
+                    className="flex-1"
+                  >
+                    Atender
+                  </Button>
+                  <CopyButton
+                    value={lead.phone}
+                    title="Copiar número do lead"
+                    onCopied={() => handleCopyAtender(lead)}
+                  />
+                  {hasAttendWebhook && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleAtenderHook(lead)}
+                      disabled={pending === lead.id}
+                      className="w-full"
+                    >
+                      Atender por hook
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {filteredQueue.length === 0 && (
+            <p className="py-6 text-center text-secondary">
+              {initialQueue.length === 0
+                ? "Nenhum lead na sua fila no momento."
+                : "Nenhum lead bate com esses filtros."}
+            </p>
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-secondary">
