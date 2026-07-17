@@ -35,7 +35,9 @@ export default async function AtendimentoLayout({
     // data-theme aqui, e não no <html>: o servidor já entrega o tema escolhido
     // pintado, sem piscar. bg-app cobre o fundo do body, que fica escuro atrás.
     <div data-theme-root data-theme={theme} className="flex min-h-screen bg-app">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-app p-4">
+      {/* sticky + h-screen: a barra acompanha o scroll da página em vez de
+          subir junto. overflow-y-auto pra ela rolar por dentro se não couber. */}
+      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-app p-4">
         <div className="mb-6 flex justify-center">
           {/* h-12 e não menos: o "SMFY" é pequeno dentro do lockup, e abaixo
               disso o texto fica ilegível. Ainda sobra folga na sidebar. */}
@@ -43,14 +45,18 @@ export default async function AtendimentoLayout({
         </div>
 
         <OperatorSidebarNav />
+
+        <div className="mt-4 flex flex-col gap-3">
+          <SidebarClock />
+          <ThemeToggle />
+        </div>
+
         <OnlineStatusCard
           initialStatus={user.status}
           notifyIdleWarning={user.notifyIdleWarning}
         />
 
         <div className="mt-auto flex flex-col gap-3">
-          <SidebarClock />
-          <ThemeToggle />
           <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
               {initials(name) || "?"}

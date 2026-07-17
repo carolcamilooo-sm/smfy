@@ -38,9 +38,12 @@ export default async function DashboardLayout({
 
         <SidebarNav />
 
-        <div className="mt-auto flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-3">
           <SidebarClock />
           <ThemeToggle />
+        </div>
+
+        <div className="mt-auto flex flex-col gap-3">
           <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
               {initials(name) || "?"}
