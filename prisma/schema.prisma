@@ -164,6 +164,10 @@ model Lead {
   /// CPF/CNPJ do comprador, só dígitos.
   document           String?
   product             String?
+  /// Código e SKU do produto no gateway de origem — vêm no próprio webhook
+  /// (PayT e PerfectPay), sem depender de o produto estar cadastrado aqui.
+  productCode         String?
+  productSku          String?
   productId           String?
   productRef          Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
   value               Decimal?      @db.Decimal(10, 2)

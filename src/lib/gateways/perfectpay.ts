@@ -7,7 +7,7 @@ type PerfectPayPayload = {
   code?: string;
   sale_amount?: number;
   sale_status_enum?: number;
-  product?: { name?: string };
+  product?: { name?: string; code?: string };
   customer?: {
     full_name?: string;
     email?: string;
@@ -61,6 +61,7 @@ export const perfectpayAdapter: GatewayAdapter = {
       email: data.customer?.email,
       document: normalizeDocument(data.customer?.identification_number),
       product: data.product?.name,
+      productCode: data.product?.code,
       value: typeof data.sale_amount === "number" ? data.sale_amount : undefined,
       paymentStatus,
     };

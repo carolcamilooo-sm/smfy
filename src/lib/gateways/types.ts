@@ -8,6 +8,10 @@ export type NormalizedLead = {
   /** CPF/CNPJ do comprador, só dígitos. Cada gateway chama de um jeito. */
   document?: string;
   product?: string;
+  /** Código do produto no gateway de origem. Só PayT e PerfectPay mandam. */
+  productCode?: string;
+  /** SKU do produto no gateway. Hoje só a PayT manda. */
+  productSku?: string;
   value?: number;
   paymentStatus: NormalizedPaymentStatus;
 };

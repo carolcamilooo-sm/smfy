@@ -63,7 +63,11 @@ export async function POST(
     email: lead.email,
     document: lead.document,
     product: lead.product,
-    productCode: lead.productRef?.codigo ?? null,
+    // O código vem do gateway (PayT/PerfectPay mandam no webhook); o cadastrado
+    // aqui só entra na frente quando o produtor preencheu um código próprio.
+    productCode: lead.productRef?.codigo ?? lead.productCode,
+    productSku: lead.productSku,
+    // Sigla é conceito só daqui: não existe do lado do gateway.
     productSigla: lead.productRef?.sigla ?? null,
     producer: lead.producer?.name ?? null,
     value: lead.value ? Number(lead.value) : null,

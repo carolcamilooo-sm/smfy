@@ -14,7 +14,7 @@ type PayTPayload = {
     phone?: string;
     doc?: string;
   };
-  product?: { name?: string };
+  product?: { name?: string; code?: string; sku?: string };
   transaction?: {
     payment_status?: string;
     total_price?: number;
@@ -67,6 +67,8 @@ export const paytAdapter: GatewayAdapter = {
       email: data.customer?.fake_email ? undefined : data.customer?.email,
       document: normalizeDocument(data.customer?.doc),
       product: data.product?.name,
+      productCode: data.product?.code,
+      productSku: data.product?.sku,
       value: typeof totalPrice === "number" ? totalPrice / 100 : undefined,
       paymentStatus,
     };
