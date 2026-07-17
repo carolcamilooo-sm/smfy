@@ -18,7 +18,6 @@ import {
   createGroup,
   updateGroup,
   removeGroup,
-  setOperatorGroup,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -188,7 +187,6 @@ export default async function OperadoresPage({
         createGroup={createGroup}
         updateGroup={updateGroup}
         removeGroup={removeGroup}
-        setOperatorGroup={setOperatorGroup}
       />
 
       <Card>

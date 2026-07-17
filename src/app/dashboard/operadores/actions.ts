@@ -121,16 +121,32 @@ export async function updateGroup(formData: FormData) {
   const id = String(formData.get("id"));
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
-  await prisma.attendanceGroup.update({
-    where: { id },
-    data: {
-      name,
-      weightApproved: clampPercent(formData.get("weightApproved")),
-      weightPending: clampPercent(formData.get("weightPending")),
-      weightDeclined: clampPercent(formData.get("weightDeclined")),
-      active: formData.get("active") === "on",
-    },
-  });
+
+  // Contas marcadas neste grupo. Uma conta só pode estar num grupo: marcar aqui
+  // migra de qualquer outro; desmarcar uma que era deste grupo volta pra
+  // individual. Contas de outros grupos não são tocadas.
+  const memberIds = formData.getAll("member").map(String);
+
+  await prisma.$transaction([
+    prisma.attendanceGroup.update({
+      where: { id },
+      data: {
+        name,
+        weightApproved: clampPercent(formData.get("weightApproved")),
+        weightPending: clampPercent(formData.get("weightPending")),
+        weightDeclined: clampPercent(formData.get("weightDeclined")),
+        active: formData.get("active") === "on",
+      },
+    }),
+    prisma.user.updateMany({
+      where: { id: { in: memberIds } },
+      data: { groupId: id },
+    }),
+    prisma.user.updateMany({
+      where: { groupId: id, id: { notIn: memberIds } },
+      data: { groupId: null },
+    }),
+  ]);
   revalidatePath("/dashboard/operadores");
 }
 
@@ -139,14 +155,5 @@ export async function removeGroup(formData: FormData) {
   const id = String(formData.get("id"));
   // onDelete: SetNull no schema devolve as contas ao modo individual.
   await prisma.attendanceGroup.delete({ where: { id } });
-  revalidatePath("/dashboard/operadores");
-}
-
-export async function setOperatorGroup(formData: FormData) {
-  await requireDashboardAccess();
-  const operatorId = String(formData.get("operatorId"));
-  const raw = String(formData.get("groupId") ?? "");
-  const groupId = raw === "" ? null : raw;
-  await prisma.user.update({ where: { id: operatorId }, data: { groupId } });
   revalidatePath("/dashboard/operadores");
 }
