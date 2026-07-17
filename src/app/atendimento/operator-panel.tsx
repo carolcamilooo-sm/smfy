@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,11 +63,15 @@ export function OperatorPanel({
   const [selectedTemplate, setSelectedTemplate] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [producerFilter, setProducerFilter] = useState("all");
-  const [paymentFilter, setPaymentFilter] = useState("all");
-  const [productFilter, setProductFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("today");
-  const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
+  // Filtros persistidos por operador: o atendente reencontra a fila do jeito
+  // que deixou, sem reconfigurar a cada visita. A chave leva o operatorId pra
+  // não misturar preferências num aparelho compartilhado.
+  const ns = `smfy:queue-filters:${operatorId}`;
+  const [producerFilter, setProducerFilter] = usePersistedState(`${ns}:producer`, "all");
+  const [paymentFilter, setPaymentFilter] = usePersistedState(`${ns}:payment`, "all");
+  const [productFilter, setProductFilter] = usePersistedState(`${ns}:product`, "all");
+  const [periodFilter, setPeriodFilter] = usePersistedState(`${ns}:period`, "today");
+  const [sortOrder, setSortOrder] = usePersistedState(`${ns}:sort`, "oldest");
 
   const producers = Array.from(
     new Set(initialQueue.map((lead) => lead.producer?.name ?? "Sem produtor"))
@@ -88,12 +93,20 @@ export function OperatorPanel({
     return true;
   }
 
+  // Produtor/produto são opções dinâmicas: se o valor salvo não está mais na
+  // fila, mostra tudo em vez de prender o atendente numa lista vazia. A
+  // preferência não é apagada — quando aquele produtor voltar, o filtro volta.
+  const producerEff =
+    producerFilter === "all" || producers.includes(producerFilter) ? producerFilter : "all";
+  const productEff =
+    productFilter === "all" || products.includes(productFilter) ? productFilter : "all";
+
   const filteredQueue = initialQueue
     .filter((lead) =>
-      producerFilter === "all" ? true : (lead.producer?.name ?? "Sem produtor") === producerFilter
+      producerEff === "all" ? true : (lead.producer?.name ?? "Sem produtor") === producerEff
     )
     .filter((lead) => (paymentFilter === "all" ? true : lead.paymentStatus === paymentFilter))
-    .filter((lead) => (productFilter === "all" ? true : (lead.product ?? "Sem produto") === productFilter))
+    .filter((lead) => (productEff === "all" ? true : (lead.product ?? "Sem produto") === productEff))
     .filter(withinPeriod)
     .sort((a, b) => {
       const aTime = a.assignedAt ? new Date(a.assignedAt).getTime() : 0;
@@ -238,7 +251,7 @@ export function OperatorPanel({
                 </label>
                 <select
                   id="producer-filter"
-                  value={producerFilter}
+                  value={producerEff}
                   onChange={(e) => setProducerFilter(e.target.value)}
                   className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
                 >
@@ -281,7 +294,7 @@ export function OperatorPanel({
                 </label>
                 <select
                   id="product-filter"
-                  value={productFilter}
+                  value={productEff}
                   onChange={(e) => setProductFilter(e.target.value)}
                   className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
                 >
@@ -315,7 +328,7 @@ export function OperatorPanel({
                 <select
                   id="sort-order"
                   value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as "oldest" | "newest")}
+                  onChange={(e) => setSortOrder(e.target.value)}
                   className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
                 >
                   <option value="oldest">Mais antigo primeiro</option>
