@@ -213,6 +213,14 @@ body {
   z-index: 1;
 }
 
+/* A regra acima torna cada filho do card um contexto de empilhamento no mesmo
+   nível — e, empatados, quem vem depois no HTML fica por cima. Um cabeçalho
+   com menu suspenso precisa vencer o conteúdo seguinte, senão o menu abre
+   atrás da tabela. Marque o cabeçalho com data-card-header. */
+[data-glow-scope] [data-card] > [data-card-header] {
+  z-index: 5;
+}
+
 /* Sem ponteiro fino (toque) o brilho nunca se move — só pesaria a pintura. */
 @media (hover: none) {
   [data-glow-scope] [data-card]::before,

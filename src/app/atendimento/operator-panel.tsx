@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { usePersistedState } from "@/lib/use-persisted-state";
+import {
+  MultiSelectFilter,
+  decodeSelection,
+  encodeSelection,
+  effectiveSelection,
+  matchesSelection,
+} from "@/components/multi-select-filter";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +19,13 @@ import { buildWhatsAppUrl } from "@/lib/phone";
 import { getPusherClient } from "@/lib/pusher-client";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
 import { brDateString, shiftDateString, startOfDayString } from "@/lib/date-br";
+
+const PAYMENT_OPTIONS = [
+  { value: "APPROVED", label: "Pago" },
+  { value: "PENDING", label: "Pendente" },
+  { value: "DECLINED", label: "Recusado" },
+  { value: "OTHER", label: "Outro" },
+];
 
 type QueueLead = {
   id: string;
@@ -93,20 +107,18 @@ export function OperatorPanel({
     return true;
   }
 
-  // Produtor/produto são opções dinâmicas: se o valor salvo não está mais na
-  // fila, mostra tudo em vez de prender o atendente numa lista vazia. A
-  // preferência não é apagada — quando aquele produtor voltar, o filtro volta.
-  const producerEff =
-    producerFilter === "all" || producers.includes(producerFilter) ? producerFilter : "all";
-  const productEff =
-    productFilter === "all" || products.includes(productFilter) ? productFilter : "all";
+  // Produtor/produto são opções dinâmicas: o que foi salvo e não está mais na
+  // fila é descartado, e se não sobrar nada volta a mostrar tudo em vez de
+  // prender o atendente numa lista vazia. A preferência não é apagada — quando
+  // aquele produtor voltar a mandar lead, o filtro volta a valer.
+  const producerEff = effectiveSelection(decodeSelection(producerFilter), producers);
+  const productEff = effectiveSelection(decodeSelection(productFilter), products);
+  const paymentEff = decodeSelection(paymentFilter);
 
   const filteredQueue = initialQueue
-    .filter((lead) =>
-      producerEff === "all" ? true : (lead.producer?.name ?? "Sem produtor") === producerEff
-    )
-    .filter((lead) => (paymentFilter === "all" ? true : lead.paymentStatus === paymentFilter))
-    .filter((lead) => (productEff === "all" ? true : (lead.product ?? "Sem produto") === productEff))
+    .filter((lead) => matchesSelection(producerEff, lead.producer?.name ?? "Sem produtor"))
+    .filter((lead) => matchesSelection(paymentEff, lead.paymentStatus))
+    .filter((lead) => matchesSelection(productEff, lead.product ?? "Sem produto"))
     .filter(withinPeriod)
     .sort((a, b) => {
       const aTime = a.assignedAt ? new Date(a.assignedAt).getTime() : 0;
@@ -241,71 +253,45 @@ export function OperatorPanel({
       </div>
 
       <Card>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div data-card-header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-title">Fila de atendimento</h2>
           {initialQueue.length > 0 && (
             <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label htmlFor="producer-filter" className="text-xs text-secondary">
-                  Produtor
-                </label>
-                <select
-                  id="producer-filter"
-                  value={producerEff}
-                  onChange={(e) => setProducerFilter(e.target.value)}
-                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
-                >
-                  <option value="all">Todos ({initialQueue.length})</option>
-                  {producers.map((name) => (
-                    <option key={name} value={name}>
-                      {name} ({initialQueue.filter((l) => (l.producer?.name ?? "Sem produtor") === name).length})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label htmlFor="payment-filter" className="text-xs text-secondary">
-                  Pagamento
-                </label>
-                <select
-                  id="payment-filter"
-                  value={paymentFilter}
-                  onChange={(e) => setPaymentFilter(e.target.value)}
-                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
-                >
-                  <option value="all">Todos</option>
-                  <option value="APPROVED">
-                    Pago ({initialQueue.filter((l) => l.paymentStatus === "APPROVED").length})
-                  </option>
-                  <option value="PENDING">
-                    Pendente ({initialQueue.filter((l) => l.paymentStatus === "PENDING").length})
-                  </option>
-                  <option value="DECLINED">
-                    Recusado ({initialQueue.filter((l) => l.paymentStatus === "DECLINED").length})
-                  </option>
-                  <option value="OTHER">
-                    Outro ({initialQueue.filter((l) => l.paymentStatus === "OTHER").length})
-                  </option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label htmlFor="product-filter" className="text-xs text-secondary">
-                  Produto
-                </label>
-                <select
-                  id="product-filter"
-                  value={productEff}
-                  onChange={(e) => setProductFilter(e.target.value)}
-                  className="rounded-md border border-border bg-app px-2.5 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
-                >
-                  <option value="all">Todos ({initialQueue.length})</option>
-                  {products.map((name) => (
-                    <option key={name} value={name}>
-                      {name} ({initialQueue.filter((l) => (l.product ?? "Sem produto") === name).length})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <MultiSelectFilter
+                label="Produtor"
+                totalCount={initialQueue.length}
+                selection={producerEff}
+                onChange={(next) => setProducerFilter(encodeSelection(next))}
+                options={producers.map((name) => ({
+                  value: name,
+                  label: name,
+                  count: initialQueue.filter(
+                    (l) => (l.producer?.name ?? "Sem produtor") === name
+                  ).length,
+                }))}
+              />
+              <MultiSelectFilter
+                label="Pagamento"
+                totalCount={initialQueue.length}
+                selection={paymentEff}
+                onChange={(next) => setPaymentFilter(encodeSelection(next))}
+                options={PAYMENT_OPTIONS.map(({ value, label }) => ({
+                  value,
+                  label,
+                  count: initialQueue.filter((l) => l.paymentStatus === value).length,
+                }))}
+              />
+              <MultiSelectFilter
+                label="Produto"
+                totalCount={initialQueue.length}
+                selection={productEff}
+                onChange={(next) => setProductFilter(encodeSelection(next))}
+                options={products.map((name) => ({
+                  value: name,
+                  label: name,
+                  count: initialQueue.filter((l) => (l.product ?? "Sem produto") === name).length,
+                }))}
+              />
               <div className="flex items-center gap-2">
                 <label htmlFor="period-filter" className="text-xs text-secondary">
                   Período
