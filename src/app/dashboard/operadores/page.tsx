@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { getEffectiveStatus, grupoValeNaCategoria, splitShares } from "@/lib/distribution";
+import { getEffectiveStatus, fatiaAprovadosPorConta } from "@/lib/distribution";
 import { getSalesRanking } from "@/lib/queries";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +74,7 @@ export default async function OperadoresPage({
     await Promise.all([
       prisma.user.findMany({
         where: { role: "OPERATOR", approvalStatus: "APPROVED", active: true },
-        include: { distributionRule: true, group: true },
+        include: { distributionRule: true, groups: true },
         orderBy: { name: "asc" },
       }),
       prisma.user.findMany({
@@ -109,27 +109,17 @@ export default async function OperadoresPage({
       }),
       prisma.attendanceGroup.findMany({
         orderBy: { name: "asc" },
-        include: { _count: { select: { members: true } } },
+        include: { members: { select: { id: true } } },
       }),
       getSalesRanking({ period: rankingPeriod }),
     ]);
 
-  // Fatia de cada conta, categoria por categoria, pela mesma conta que a
-  // distribuição faz — só que considerando todo mundo disponível (e não só quem
-  // está online agora), pra a tabela não ficar dançando a cada refresh.
-  // Venda aprovada é só de grupo, então a lista de quem disputa aprovados são
-  // as contas de grupo — e é sobre elas que a fatia é calculada.
-  const gruposNoAprovado = operators.filter((op) => grupoValeNaCategoria(op.group, "approved"));
-  const sharesApproved = splitShares(gruposNoAprovado, "approved");
-  const somaAprovado = [...sharesApproved.values()].reduce((a, b) => a + b, 0);
-
-  // Normaliza pro que a pessoa recebe de fato. Com 3 grupos de 20% e ninguém
-  // mais na disputa, cada um leva um terço — mostrar "20%" seria enganoso.
-  const shareDaConta = (op: (typeof operators)[number]): number | null => {
-    if (!grupoValeNaCategoria(op.group, "approved")) return null;
-    const bruto = sharesApproved.get(op.id) ?? 0;
-    return somaAprovado > 0 ? (bruto / somaAprovado) * 100 : 0;
-  };
+  // Fatia esperada nas vendas: a % de cada grupo em relação às dos outros,
+  // repartida entre as contas dele. Quem está em mais de um grupo soma as duas.
+  // Considera todo mundo disponível, e não só quem está online agora, pra a
+  // tabela não ficar dançando a cada refresh.
+  const fatiasAprovado = fatiaAprovadosPorConta(groups);
+  const shareDaConta = (op: { id: string }): number | null => fatiasAprovado.get(op.id) ?? null;
 
   const noRodizio = operators.filter((op) => op.distributionRule?.active).length;
 
@@ -137,12 +127,11 @@ export default async function OperadoresPage({
     id: g.id,
     name: g.name,
     weightApproved: g.weightApproved,
-    weightPending: g.weightPending,
-    weightDeclined: g.weightDeclined,
     active: g.active,
-    memberCount: g._count.members,
+    memberCount: g.members.length,
+    memberIds: g.members.map((m) => m.id),
   }));
-  const operatorsForGroups = operators.map((op) => ({ id: op.id, name: op.name, groupId: op.groupId }));
+  const operatorsForGroups = operators.map((op) => ({ id: op.id, name: op.name }));
 
   type ProductForUi = { id: string; name: string; active: boolean };
   const productGroups = Array.from(
@@ -286,8 +275,14 @@ export default async function OperadoresPage({
                 operator={op}
                 effectiveStatus={getEffectiveStatus(op)}
                 share={
-                  op.groupId || op.distributionRule?.active
-                    ? { approved: shareDaConta(op), groupName: op.group?.name ?? null }
+                  op.groups.length > 0 || op.distributionRule?.active
+                    ? {
+                        approved: shareDaConta(op),
+                        // Vários grupos cabem numa conta só; o nome de todos
+                        // aparece pra você saber de onde vem a fatia.
+                        groupName:
+                          op.groups.length > 0 ? op.groups.map((g) => g.name).join(" + ") : null,
+                      }
                     : null
                 }
                 productGroups={productGroups}

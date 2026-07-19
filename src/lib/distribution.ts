@@ -70,53 +70,93 @@ export function weightForCategory(rule: CategoryWeights, category: DistributionC
   return rule.weightPending;
 }
 
+export type GrupoDoOperador = { id: string } & NonNullable<GroupWeights>;
+
+/** Um balde disputa o lead com os outros; dentro dele, disputam os membros. */
+export type Balde<T> = { chave: string; peso: number; membros: T[] };
+
 /**
- * Reparte os 100% de uma categoria entre os grupos e as contas individuais.
+ * Monta os baldes que vão disputar este lead.
  *
- * Só os grupos têm % configurada: cada grupo reserva a dele e divide entre as
- * próprias contas disponíveis — se uma cai, as outras absorvem, e o total do
- * grupo não muda. O que sobra dos grupos é dividido em partes iguais entre as
- * contas individuais, automaticamente, sem precisar configurar nada.
+ * Em aprovados, cada grupo é um balde e o peso é a % dele. Como a mesma pessoa
+ * pode estar em vários grupos (um por demanda, por exemplo), ela aparece em
+ * mais de um balde — e isso é o esperado: ela concorre pelos dois lados.
  *
- * Um grupo sem nenhuma conta disponível não segura a fatia dele: ela volta pro
- * bolo dos individuais. E se não sobrar nenhum individual, os grupos ficam com
- * tudo, proporcionalmente às suas %.
+ * Nas outras categorias não existe grupo: todo mundo cai num balde só e o
+ * rodízio decide, o que dá a divisão igual entre quem está disponível.
  */
-export function splitShares<T extends { id: string; groupId: string | null; group: GroupWeights }>(
-  available: T[],
+export function montarBaldes<T extends { id: string; groups: GrupoDoOperador[] }>(
+  disponiveis: T[],
   category: DistributionCategory
+): Balde<T>[] {
+  if (!somenteGrupoRecebe(category)) {
+    return disponiveis.length > 0
+      ? [{ chave: "rodizio", peso: 1, membros: disponiveis }]
+      : [];
+  }
+
+  // Quantos disponíveis cada grupo tem NESTE lead. Um grupo pode aparecer aqui
+  // com só uma pessoa: os outros membros não estão liberados neste produtor.
+  const disponiveisPorGrupo = new Map<string, number>();
+  for (const op of disponiveis) {
+    for (const g of op.groups) {
+      if (!grupoValeNaCategoria(g, category)) continue;
+      disponiveisPorGrupo.set(g.id, (disponiveisPorGrupo.get(g.id) ?? 0) + 1);
+    }
+  }
+
+  const porGrupo = new Map<string, Balde<T>>();
+  for (const op of disponiveis) {
+    const candidatos = op.groups.filter((g) => grupoValeNaCategoria(g, category));
+    if (candidatos.length === 0) continue;
+
+    // Cada pessoa entra por UM grupo só neste lead: aquele com mais gente
+    // disponível aqui — o time que está de fato atendendo esta demanda.
+    //
+    // Sem isso, quem está em dois grupos levava quase tudo: o grupo onde ele
+    // está sozinho soma menos leads que o grupo cheio, e por isso ganharia a
+    // vez sempre, num ciclo que não se corrige. Desempate pela maior %, e
+    // depois pelo id, pra escolha ser sempre a mesma.
+    const escolhido = candidatos.reduce((melhor, g) => {
+      const a = disponiveisPorGrupo.get(g.id) ?? 0;
+      const b = disponiveisPorGrupo.get(melhor.id) ?? 0;
+      if (a !== b) return a > b ? g : melhor;
+      const pa = weightForCategory(g, category);
+      const pb = weightForCategory(melhor, category);
+      if (pa !== pb) return pa > pb ? g : melhor;
+      return g.id < melhor.id ? g : melhor;
+    });
+
+    const balde =
+      porGrupo.get(escolhido.id) ??
+      { chave: escolhido.id, peso: weightForCategory(escolhido, category), membros: [] };
+    balde.membros.push(op);
+    porGrupo.set(escolhido.id, balde);
+  }
+  return [...porGrupo.values()];
+}
+
+/**
+ * Fatia esperada de cada conta nas vendas aprovadas, pros painéis. O grupo leva
+ * a % dele em relação às dos outros, e reparte entre as próprias contas; quem
+ * está em mais de um grupo soma as duas fatias.
+ *
+ * É uma estimativa de planejamento: considera todo mundo disponível e ignora a
+ * trava por produtor, que muda de lead pra lead.
+ */
+export function fatiaAprovadosPorConta(
+  grupos: { id: string; weightApproved: number; active: boolean; members: { id: string }[] }[]
 ): Map<string, number> {
-  const perGroup = new Map<string, { weight: number; count: number }>();
-  let individuals = 0;
+  const disputando = grupos.filter((g) => g.active && g.weightApproved > 0 && g.members.length > 0);
+  const soma = disputando.reduce((s, g) => s + g.weightApproved, 0);
+  const fatias = new Map<string, number>();
+  if (soma === 0) return fatias;
 
-  for (const op of available) {
-    if (op.groupId && grupoValeNaCategoria(op.group, category)) {
-      const entry = perGroup.get(op.groupId);
-      if (entry) entry.count += 1;
-      else perGroup.set(op.groupId, { weight: weightForCategory(op.group, category), count: 1 });
-    } else {
-      individuals += 1;
-    }
+  for (const g of disputando) {
+    const porConta = ((g.weightApproved / soma) * 100) / g.members.length;
+    for (const m of g.members) fatias.set(m.id, (fatias.get(m.id) ?? 0) + porConta);
   }
-
-  let reservedByGroups = 0;
-  for (const { weight } of perGroup.values()) reservedByGroups += weight;
-
-  // Math.max(0): se as % dos grupos passarem de 100 (config errada), os
-  // individuais ficam zerados em vez de virarem peso negativo.
-  const individualShare =
-    individuals > 0 ? Math.max(0, 100 - reservedByGroups) / individuals : 0;
-
-  const shares = new Map<string, number>();
-  for (const op of available) {
-    if (op.groupId && perGroup.has(op.groupId)) {
-      const { weight, count } = perGroup.get(op.groupId)!;
-      shares.set(op.id, weight / count);
-    } else {
-      shares.set(op.id, individualShare);
-    }
-  }
-  return shares;
+  return fatias;
 }
 
 /** Campo de peso da categoria, pra filtrar grupos com peso > 0. */
@@ -201,43 +241,33 @@ async function grantsForLead(
  *    rápido recebe mais: trabalhou a fila, volta pro topo; deixou acumular,
  *    sai da roda até dar conta. Empate vai pra quem recebeu menos hoje.
  */
-export function chooseByQueue<T extends { id: string; groupId: string | null; group: GroupWeights }>(
-  eligible: T[],
-  category: DistributionCategory,
-  shares: Map<string, number>,
+export function chooseByQueue<T extends { id: string }>(
+  baldes: Balde<T>[],
   receivedToday: Map<string, number>,
   openToday: Map<string, number>
-): T {
-  const INDIVIDUAIS = "__individuais__";
-  type Balde = { share: number; received: number; members: T[] };
-  const baldes = new Map<string, Balde>();
-  for (const op of eligible) {
-    const key =
-      op.groupId && grupoValeNaCategoria(op.group, category) ? op.groupId : INDIVIDUAIS;
-    const balde = baldes.get(key) ?? { share: 0, received: 0, members: [] };
-    balde.share += shares.get(op.id) ?? 0;
-    balde.received += receivedToday.get(op.id) ?? 0;
-    balde.members.push(op);
-    baldes.set(key, balde);
-  }
+): T | null {
+  if (baldes.length === 0) return null;
 
-  let escolhido: Balde | null = null;
+  let escolhido: Balde<T> | null = null;
   let melhorRazao = Infinity;
-  for (const balde of baldes.values()) {
-    const razao = balde.share > 0 ? balde.received / balde.share : Infinity;
+  for (const b of baldes) {
+    // Quem está em dois grupos conta nos dois — o balde fica um pouco mais
+    // "servido" do que está, e por isso cede a vez mais cedo. É a aproximação
+    // que mantém a conta simples sem privilegiar quem acumula grupos.
+    const recebidos = b.membros.reduce((s, m) => s + (receivedToday.get(m.id) ?? 0), 0);
+    const razao = b.peso > 0 ? recebidos / b.peso : Infinity;
     if (razao < melhorRazao) {
       melhorRazao = razao;
-      escolhido = balde;
+      escolhido = b;
     }
   }
-  // Só cai no fallback se todo balde tiver fatia zero — grupos somando mais
-  // de 100%, que a tela avisa em vermelho.
-  const balde = escolhido ?? baldes.values().next().value!;
+  // Só cai no fallback se todo balde tiver peso zero, o que a tela avisa.
+  const balde = escolhido ?? baldes[0];
 
-  let chosen = balde.members[0];
+  let chosen = balde.membros[0];
   let menorFila = Infinity;
   let menosRecebidos = Infinity;
-  for (const op of balde.members) {
+  for (const op of balde.membros) {
     const fila = openToday.get(op.id) ?? 0;
     const recebidos = receivedToday.get(op.id) ?? 0;
     if (fila < menorFila || (fila === menorFila && recebidos < menosRecebidos)) {
@@ -278,30 +308,21 @@ export async function pickOperatorForLead(
       status: "ONLINE",
       active: true,
       ...(allowedIds ? { id: { in: Array.from(allowedIds) } } : {}),
-      // Em aprovados, só grupo. Nas outras, entra quem está com a distribuição
-      // ligada ou quem participa por um grupo com % ali.
+      // Em aprovados, só quem está em algum grupo com % na categoria. Nas
+      // outras, quem está com a distribuição ligada.
       ...(somenteGrupo
-        ? { group: { is: { active: true, [weightField]: { gt: 0 } } } }
-        : {
-            OR: [
-              { distributionRule: { is: { active: true } } },
-              { group: { is: { active: true, [weightField]: { gt: 0 } } } },
-            ],
-          }),
+        ? { groups: { some: { active: true, [weightField]: { gt: 0 } } } }
+        : { distributionRule: { is: { active: true } } }),
     },
-    include: { distributionRule: true, group: true },
+    include: { distributionRule: true, groups: true },
   });
 
-  // Quem entrou só pelo grupo precisa que o grupo valha nesta categoria; quem
-  // entrou pela regra individual precisa dela ligada. Sem esse filtro, alguém
-  // com a distribuição desligada passaria a receber pendentes só por estar num
-  // grupo que só tem % em aprovados.
   let eligible = operators.filter(
     (op) =>
       getEffectiveStatus(op) === "ONLINE" &&
       (somenteGrupo
-        ? grupoValeNaCategoria(op.group, category)
-        : grupoValeNaCategoria(op.group, category) || op.distributionRule?.active === true)
+        ? op.groups.some((g) => grupoValeNaCategoria(g, category))
+        : op.distributionRule?.active === true)
   );
   if (eligible.length === 0) return null;
 
@@ -373,12 +394,10 @@ export async function pickOperatorForLead(
     openCounts.map((c) => [c.assignedOperatorId as string, c._count._all])
   );
 
-  // O rateio é feito sobre quem sobrou de verdade (online, com acesso, dentro
-  // do limite e do corte por prioridade) — então quem caiu no meio do caminho
-  // tem a fatia absorvida pelos que ficaram, e não some da conta.
-  const shares = splitShares(eligible, category);
-
-  return chooseByQueue(eligible, category, shares, countMap, openMap);
+  // Os baldes saem de quem sobrou de verdade (online, com acesso, dentro do
+  // limite e do corte por prioridade) — então quem caiu no caminho tem a fatia
+  // absorvida pelos que ficaram, e não some da conta.
+  return chooseByQueue(montarBaldes(eligible, category), countMap, openMap);
 }
 
 export async function assignLead(

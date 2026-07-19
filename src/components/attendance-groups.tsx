@@ -11,13 +11,12 @@ type Group = {
   id: string;
   name: string;
   weightApproved: number;
-  weightPending: number;
-  weightDeclined: number;
   active: boolean;
   memberCount: number;
+  memberIds: string[];
 };
 
-type Operator = { id: string; name: string; groupId: string | null };
+type Operator = { id: string; name: string };
 
 type Action = (fd: FormData) => Promise<void>;
 
@@ -65,34 +64,23 @@ function GroupForm({
       {/* Contas do grupo */}
       <div className="mt-3 border-t border-border pt-3">
         <span className="mb-2 block text-[11px] text-muted">
-          Quem faz parte do {group.name} (a % acima é dividida entre os marcados)
+          Quem faz parte do {group.name} (a % acima é dividida entre os
+          marcados). A mesma pessoa pode estar em vários grupos — marcar aqui
+          não tira ela dos outros.
         </span>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
-          {operators.map((op) => {
-            const emOutroGrupo = op.groupId !== null && op.groupId !== group.id;
-            return (
-              <label
-                key={op.id}
-                className={
-                  "flex items-center gap-2 text-xs " +
-                  (emOutroGrupo ? "text-muted" : "text-secondary")
-                }
-                title={emOutroGrupo ? "Está em outro grupo; marcar aqui move pra cá" : undefined}
-              >
-                <input
-                  type="checkbox"
-                  name="member"
-                  value={op.id}
-                  defaultChecked={op.groupId === group.id}
-                  className="h-3.5 w-3.5"
-                />
-                <span className="truncate">
-                  {op.name}
-                  {emOutroGrupo && " ↗"}
-                </span>
-              </label>
-            );
-          })}
+          {operators.map((op) => (
+            <label key={op.id} className="flex items-center gap-2 text-xs text-secondary">
+              <input
+                type="checkbox"
+                name="member"
+                value={op.id}
+                defaultChecked={group.memberIds.includes(op.id)}
+                className="h-3.5 w-3.5"
+              />
+              <span className="truncate">{op.name}</span>
+            </label>
+          ))}
         </div>
       </div>
 
@@ -190,17 +178,7 @@ export function AttendanceGroups({
             // acontecia ao mover alguém de grupo. Mudando a key, o formulário
             // remonta e volta a refletir o banco.
             <GroupForm
-              key={[
-                g.id,
-                g.name,
-                g.weightApproved,
-                g.active,
-                operators
-                  .filter((o) => o.groupId === g.id)
-                  .map((o) => o.id)
-                  .sort()
-                  .join(","),
-              ].join("|")}
+              key={[g.id, g.name, g.weightApproved, g.active, [...g.memberIds].sort().join(",")].join("|")}
               group={g}
               operators={operators}
               updateGroup={updateGroup}

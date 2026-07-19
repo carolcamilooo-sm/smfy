@@ -119,40 +119,33 @@ export async function updateGroup(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
 
-  // Contas marcadas neste grupo. Uma conta só pode estar num grupo: marcar aqui
-  // migra de qualquer outro; desmarcar uma que era deste grupo volta pra
-  // individual. Contas de outros grupos não são tocadas.
+  // Contas marcadas neste grupo. Como uma pessoa pode estar em vários grupos ao
+  // mesmo tempo (um por demanda, por exemplo), aqui a gente só define quem está
+  // NESTE grupo — a participação dela nos outros não é tocada. `set` faz as
+  // duas coisas de uma vez: entra quem foi marcado, sai quem foi desmarcado.
   const memberIds = formData.getAll("member").map(String);
 
-  await prisma.$transaction([
-    prisma.attendanceGroup.update({
-      where: { id },
-      data: {
-        name,
-        weightApproved: clampPercent(formData.get("weightApproved")),
-        // O grupo só privilegia venda aprovada. Zerados, pendente e recusado
-        // caem no rodízio normal pros membros — que é o que a tela promete.
-        weightPending: 0,
-        weightDeclined: 0,
-        active: formData.get("active") === "on",
-      },
-    }),
-    prisma.user.updateMany({
-      where: { id: { in: memberIds } },
-      data: { groupId: id },
-    }),
-    prisma.user.updateMany({
-      where: { groupId: id, id: { notIn: memberIds } },
-      data: { groupId: null },
-    }),
-  ]);
+  await prisma.attendanceGroup.update({
+    where: { id },
+    data: {
+      name,
+      weightApproved: clampPercent(formData.get("weightApproved")),
+      // O grupo só privilegia venda aprovada. Zerados, pendente e recusado
+      // caem no rodízio normal pros membros — que é o que a tela promete.
+      weightPending: 0,
+      weightDeclined: 0,
+      active: formData.get("active") === "on",
+      members: { set: memberIds.map((memberId) => ({ id: memberId })) },
+    },
+  });
   revalidatePath("/dashboard/operadores");
 }
 
 export async function removeGroup(formData: FormData) {
   await requireDashboardAccess();
   const id = String(formData.get("id"));
-  // onDelete: SetNull no schema devolve as contas ao modo individual.
+  // A tabela de ligação some junto (ON DELETE CASCADE), então as contas apenas
+  // deixam de participar deste grupo — os outros grupos delas continuam.
   await prisma.attendanceGroup.delete({ where: { id } });
   revalidatePath("/dashboard/operadores");
 }

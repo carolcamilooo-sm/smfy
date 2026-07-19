@@ -72,10 +72,10 @@ model User {
   lastActivityAt DateTime         @default(now())
   createdAt      DateTime         @default(now())
 
-  // Conta num grupo de atendimento: o peso dela na distribuição passa a ser a
-  // % do grupo dividida pelas contas online do grupo, e não a regra individual.
-  groupId        String?
-  group          AttendanceGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  // Grupos de atendimento de que a conta participa. É muitos-pra-muitos: a
+  // mesma pessoa pode estar no grupo de uma demanda e no de outra, com a % de
+  // cada um valendo na demanda dele.
+  groups         AttendanceGroup[] @relation("GroupMembers")
 
   distributionRule DistributionRule?
   assignedLeads     Lead[]          @relation("AssignedLeads")
@@ -105,10 +105,13 @@ model DistributionRule {
   @@map("distribution_rules")
 }
 
-/// Grupo de atendimento: uma pessoa com várias contas (ex: automações em
-/// máquinas diferentes). O grupo tem UMA % por categoria, e a distribuição a
-/// reparte entre as contas online — se uma cai, as outras absorvem, mantendo
-/// o total do grupo. Os pesos têm o mesmo significado da DistributionRule.
+/// Grupo de atendimento: quem recebe venda aprovada, e com que fatia. Só
+/// weightApproved é lido — pendente e recusado vão pelo rodízio, com a equipe
+/// toda. A fatia do grupo se reparte entre as contas dele que estão
+/// disponíveis, então quem sai tem a parte absorvida pelos que ficaram.
+///
+/// A mesma pessoa pode estar em vários grupos (um por demanda, por exemplo):
+/// em cada lead, disputam os grupos que têm alguém liberado naquele produtor.
 model AttendanceGroup {
   id             String  @id @default(cuid())
   name           String
@@ -118,7 +121,7 @@ model AttendanceGroup {
   active         Boolean @default(true)
   createdAt      DateTime @default(now())
 
-  members User[]
+  members User[] @relation("GroupMembers")
 
   @@map("attendance_groups")
 }
