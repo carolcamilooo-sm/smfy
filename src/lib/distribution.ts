@@ -48,6 +48,19 @@ export function grupoValeNaCategoria(
   return Boolean(group?.active) && weightForCategory(group, category) > 0;
 }
 
+/**
+ * Venda aprovada é só dos grupos: quem não está num grupo com % não recebe
+ * lead pago, ponto. O rodízio existe pra pendente e recusado, onde a equipe
+ * inteira entra por igual.
+ *
+ * Consequência que a tela precisa deixar clara: sem nenhum grupo disponível
+ * (todos offline, ou nenhum grupo criado), a venda aprovada fica em espera —
+ * não cai pro resto da equipe.
+ */
+export function somenteGrupoRecebe(category: DistributionCategory): boolean {
+  return category === "approved";
+}
+
 export const DISTRIBUTION_CATEGORIES = ["approved", "pending", "declined"] as const;
 
 export function weightForCategory(rule: CategoryWeights, category: DistributionCategory): number {
@@ -258,19 +271,23 @@ export async function pickOperatorForLead(
   const allowedIds = grants ? new Set(grants.map((g) => g.operatorId)) : null;
 
   const weightField = weightFieldForCategory(category);
+  const somenteGrupo = somenteGrupoRecebe(category);
   const operators = await prisma.user.findMany({
     where: {
       role: "OPERATOR",
       status: "ONLINE",
       active: true,
       ...(allowedIds ? { id: { in: Array.from(allowedIds) } } : {}),
-      // Entra quem está com a distribuição ligada, ou quem está num grupo com
-      // % nesta categoria. O segundo caso cobre a conta que tem a distribuição
-      // individual desligada mas participa pelo grupo.
-      OR: [
-        { distributionRule: { is: { active: true } } },
-        { group: { is: { active: true, [weightField]: { gt: 0 } } } },
-      ],
+      // Em aprovados, só grupo. Nas outras, entra quem está com a distribuição
+      // ligada ou quem participa por um grupo com % ali.
+      ...(somenteGrupo
+        ? { group: { is: { active: true, [weightField]: { gt: 0 } } } }
+        : {
+            OR: [
+              { distributionRule: { is: { active: true } } },
+              { group: { is: { active: true, [weightField]: { gt: 0 } } } },
+            ],
+          }),
     },
     include: { distributionRule: true, group: true },
   });
@@ -282,7 +299,9 @@ export async function pickOperatorForLead(
   let eligible = operators.filter(
     (op) =>
       getEffectiveStatus(op) === "ONLINE" &&
-      (grupoValeNaCategoria(op.group, category) || op.distributionRule?.active === true)
+      (somenteGrupo
+        ? grupoValeNaCategoria(op.group, category)
+        : grupoValeNaCategoria(op.group, category) || op.distributionRule?.active === true)
   );
   if (eligible.length === 0) return null;
 

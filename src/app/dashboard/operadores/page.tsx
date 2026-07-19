@@ -1,17 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import {
-  getEffectiveStatus,
-  grupoValeNaCategoria,
-  splitShares,
-  weightForCategory,
-  type DistributionCategory,
-} from "@/lib/distribution";
+import { getEffectiveStatus, grupoValeNaCategoria, splitShares } from "@/lib/distribution";
 import { getSalesRanking } from "@/lib/queries";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, fmtShare } from "@/lib/utils";
 import { OperatorRow } from "./operator-row";
 import { AttendanceGroups } from "@/components/attendance-groups";
 import { updateProductAccess } from "@/app/dashboard/produtores/actions";
@@ -35,46 +29,37 @@ const RANKING_PERIODS = [
 ];
 
 /**
- * Quanto os grupos reservam numa categoria e quanto sobra pros individuais.
- * Só entram grupos ativos e com pelo menos uma conta — grupo vazio não segura
- * fatia nenhuma, igual à distribuição de verdade.
+ * Como as vendas aprovadas se repartem entre os grupos. Sem individuais na
+ * disputa, a % de cada grupo vale em relação às dos outros: três grupos de 20%
+ * ficam com um terço cada, não com 20% e 40% sem dono.
  */
-function categorySummary(
-  label: string,
-  category: DistributionCategory,
-  groups: { active: boolean; weightApproved: number; weightPending: number; weightDeclined: number; memberCount: number }[],
-  individualCount: number
+function resumoAprovados(
+  groups: { name: string; weightApproved: number; active: boolean; memberCount: number }[]
 ) {
-  const reserved = groups
-    .filter((g) => g.active && g.memberCount > 0)
-    .reduce((sum, g) => sum + weightForCategory(g, category), 0);
-  const leftover = 100 - reserved;
-  const excedeu = reserved > 100;
+  const disputando = groups.filter((g) => g.active && g.memberCount > 0 && g.weightApproved > 0);
+  const soma = disputando.reduce((s, g) => s + g.weightApproved, 0);
+
+  if (disputando.length === 0) {
+    return (
+      <span className="text-danger">
+        Nenhum grupo ativo com contas: as <strong>vendas aprovadas ficam em
+        espera</strong>, porque só grupo recebe lead pago.
+      </span>
+    );
+  }
 
   return (
-    <span key={label}>
-      {label}: grupos{" "}
-      <span
-        className={
-          excedeu ? "font-mono font-semibold text-danger" : "font-mono font-semibold text-primary"
-        }
-      >
-        {reserved}%
-      </span>
-      {excedeu ? (
-        <span className="text-danger"> — passou de 100%, os individuais ficam sem nada</span>
-      ) : (
-        <>
-          {" · individuais dividem "}
-          <span className="font-mono font-semibold text-success">{leftover}%</span>
-          {individualCount > 0 && (
-            <span className="text-muted">
-              {" "}
-              ({individualCount} conta{individualCount > 1 ? "s" : ""})
-            </span>
-          )}
-        </>
-      )}
+    <span>
+      <strong>Aprovados</strong> (só grupos):{" "}
+      {disputando.map((g, i) => (
+        <span key={g.name}>
+          {i > 0 && " · "}
+          {g.name}{" "}
+          <span className="font-mono font-semibold text-primary">
+            {fmtShare((g.weightApproved / soma) * 100)}
+          </span>
+        </span>
+      ))}
     </span>
   );
 }
@@ -132,19 +117,21 @@ export default async function OperadoresPage({
   // Fatia de cada conta, categoria por categoria, pela mesma conta que a
   // distribuição faz — só que considerando todo mundo disponível (e não só quem
   // está online agora), pra a tabela não ficar dançando a cada refresh.
-  // Só aprovados tem % de grupo, então é a única categoria com fatia pra
-  // mostrar. Nas outras todo mundo cai no rodízio, e a tabela diz isso.
-  const disponiveisNa = (category: DistributionCategory) =>
-    operators.filter(
-      (op) => grupoValeNaCategoria(op.group, category) || Boolean(op.distributionRule?.active)
-    );
-  const sharesApproved = splitShares(disponiveisNa("approved"), "approved");
-  const individuaisNa = (category: DistributionCategory) =>
-    disponiveisNa(category).filter((op) => !grupoValeNaCategoria(op.group, category)).length;
+  // Venda aprovada é só de grupo, então a lista de quem disputa aprovados são
+  // as contas de grupo — e é sobre elas que a fatia é calculada.
+  const gruposNoAprovado = operators.filter((op) => grupoValeNaCategoria(op.group, "approved"));
+  const sharesApproved = splitShares(gruposNoAprovado, "approved");
+  const somaAprovado = [...sharesApproved.values()].reduce((a, b) => a + b, 0);
 
-  // Número = fatia garantida pelo grupo; null = entra no rodízio.
-  const shareDaConta = (op: (typeof operators)[number]): number | null =>
-    grupoValeNaCategoria(op.group, "approved") ? (sharesApproved.get(op.id) ?? 0) : null;
+  // Normaliza pro que a pessoa recebe de fato. Com 3 grupos de 20% e ninguém
+  // mais na disputa, cada um leva um terço — mostrar "20%" seria enganoso.
+  const shareDaConta = (op: (typeof operators)[number]): number | null => {
+    if (!grupoValeNaCategoria(op.group, "approved")) return null;
+    const bruto = sharesApproved.get(op.id) ?? 0;
+    return somaAprovado > 0 ? (bruto / somaAprovado) * 100 : 0;
+  };
+
+  const noRodizio = operators.filter((op) => op.distributionRule?.active).length;
 
   const groupsForUi = groups.map((g) => ({
     id: g.id,
@@ -250,13 +237,16 @@ export default async function OperadoresPage({
           Distribuição de leads
         </h2>
         <p className="mb-4 text-xs text-secondary">
-          A distribuição entre as contas individuais é automática e premia quem
-          trabalha: o próximo lead vai pra quem tem a <strong>menor fila em
-          aberto no dia</strong>. Quem zera volta pro topo e recebe mais; quem
-          deixa acumular sai da roda até dar conta. Quem tem % é só o grupo de
-          atendimento — ele reserva a fatia dele e o resto fica pros
-          individuais. Vale pra quem está online e não está ocioso há mais de
-          15 minutos.
+          <strong>Venda aprovada só vai pra grupo de atendimento</strong>, na
+          proporção da % de cada um. Quem não está em grupo não recebe lead
+          pago.
+          <br />
+          <strong>Pendentes e recusados</strong> vão pelo rodízio, com a equipe
+          toda junto — inclusive quem está em grupo. O rodízio premia quem
+          trabalha: o próximo lead vai pra quem tem a menor fila em aberto no
+          dia, então quem zera volta pro topo e quem acumula sai da roda até dar
+          conta. Em ambos os casos vale só pra quem está online e não está
+          ocioso há mais de 15 minutos.
         </p>
         <p className="mb-4 text-xs text-secondary">
           Quem recebe o quê é decidido no botão <strong>Produtos</strong> de cada
@@ -318,14 +308,15 @@ export default async function OperadoresPage({
 
         {operators.length > 0 && (
           <div className="mt-4 flex flex-col gap-1 text-xs text-secondary">
-            {categorySummary("Aprovados", "approved", groupsForUi, individuaisNa("approved"))}
+            {resumoAprovados(groupsForUi)}
             <span className="text-muted">
-              Pendentes e recusados: sem % de grupo, vão 100% pelo rodízio.
+              <strong>Pendentes e recusados</strong>: rodízio entre toda a equipe
+              liberada ({noRodizio} conta{noRodizio === 1 ? "" : "s"}), incluindo
+              quem está em grupo.
             </span>
             <span className="mt-1 text-muted">
-              A fatia mostrada considera todo mundo disponível. Quando alguém sai
-              ou fica ocioso, a parte dele é redividida na hora entre os que
-              ficaram.
+              As fatias consideram todo mundo disponível. Quando alguém sai ou
+              fica ocioso, a parte dele é redividida na hora entre os que ficaram.
             </span>
           </div>
         )}

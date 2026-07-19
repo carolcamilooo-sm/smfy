@@ -91,22 +91,23 @@ export function OperatorRow({
           {!share ? (
             <span className="font-mono text-xs text-muted">—</span>
           ) : share.approved == null ? (
+            // Fora de grupo não existe venda aprovada; o que sobra pra pessoa é
+            // o rodízio de pendentes e recusados.
             <span
               className="text-xs text-secondary"
-              title="Sem % fixa em nenhuma categoria: recebe tudo pelo rodízio, conforme trabalha a fila"
+              title="Não recebe venda aprovada (só grupo recebe). Pendentes e recusados chegam pelo rodízio."
             >
-              rodízio
+              <span className="text-muted">sem venda</span> · rodízio
             </span>
           ) : (
-            // Quem está num grupo vive nos dois mundos: % garantida nas vendas
-            // e rodízio no resto. Mostrar só a % faria parecer que ele não
-            // recebe pendente.
-            <div title={`${fmtShare(share.approved)} dos aprovados pelo grupo; pendentes e recusados pelo rodízio, junto com a equipe`}>
+            // Conta de grupo vive nos dois mundos: fatia das vendas e rodízio
+            // no resto. Mostrar só a % faria parecer que não recebe pendente.
+            <div title={`${fmtShare(share.approved)} das vendas aprovadas pelo grupo; pendentes e recusados pelo rodízio, junto com a equipe`}>
               <span className="text-xs">
                 <span className="font-mono font-semibold text-primary">
                   {fmtShare(share.approved)}
                 </span>
-                <span className="text-muted"> aprov · </span>
+                <span className="text-muted"> venda · </span>
                 <span className="text-secondary">rodízio</span>
               </span>
               {share.groupName && (

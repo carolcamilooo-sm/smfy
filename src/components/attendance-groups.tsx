@@ -153,17 +153,16 @@ export function AttendanceGroups({
         </button>
       </div>
       <p className="mb-4 text-xs text-secondary">
-        O grupo é como você dá uma fatia maior das <strong>vendas</strong> a
-        quem converte melhor. Ex: um grupo <strong>Top 5</strong> com 60%
-        garante 60% dos leads aprovados pra essas 5 contas (12% cada), e os
-        outros 40% ficam com o resto da equipe. Serve também pra limitar quem
-        tem várias contas: 20% no grupo é 20% no total, não importa quantas
-        contas ele tenha.
+        <strong>Só quem está num grupo recebe venda aprovada.</strong> A % diz
+        como as vendas se repartem entre os grupos: dois grupos de 20% ficam com
+        metade cada, e um de 40% contra um de 20% fica com o dobro. Dentro do
+        grupo, a fatia se divide entre as contas dele.
       </p>
       <p className="mb-4 text-xs text-muted">
-        A % vale só pra aprovados. Pendentes e recusados essas mesmas contas
-        recebem pelo rodízio normal, junto com a equipe toda. Se uma conta do
-        grupo cai, as outras absorvem a fatia dela — o total do grupo não muda.
+        Pendentes e recusados essas mesmas contas recebem pelo rodízio normal,
+        junto com a equipe toda. Se uma conta do grupo cai, as outras absorvem a
+        fatia dela; se o grupo inteiro sai, a fatia vai pros outros grupos. Sem
+        nenhum grupo disponível, a venda aprovada fica em espera.
       </p>
 
       {!expanded && groups.length > 0 && (
