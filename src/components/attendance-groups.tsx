@@ -183,8 +183,24 @@ export function AttendanceGroups({
       {expanded && (
         <div className="space-y-4">
           {groups.map((g) => (
+            // A key carrega o estado que veio do servidor, e não só o id. Os
+            // campos aqui são não controlados (defaultValue/defaultChecked):
+            // quando o dado muda, o React re-renderiza mas não mexe no que já
+            // está no DOM, então a tela mentiria até um F5 — foi o que
+            // acontecia ao mover alguém de grupo. Mudando a key, o formulário
+            // remonta e volta a refletir o banco.
             <GroupForm
-              key={g.id}
+              key={[
+                g.id,
+                g.name,
+                g.weightApproved,
+                g.active,
+                operators
+                  .filter((o) => o.groupId === g.id)
+                  .map((o) => o.id)
+                  .sort()
+                  .join(","),
+              ].join("|")}
               group={g}
               operators={operators}
               updateGroup={updateGroup}

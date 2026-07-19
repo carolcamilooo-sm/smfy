@@ -82,7 +82,15 @@ export function OperatorRow({
 
   return (
     <Fragment>
-      <form action={updateDistribution} className="contents">
+      {/* key com o estado do servidor: as caixinhas abaixo são não controladas,
+          então sem remontar elas ficariam mostrando o valor antigo depois que
+          outra ação mudasse esta linha. A key fica no form, e não na linha
+          inteira, pra não fechar o painel de produtos que está aberto. */}
+      <form
+        key={`${operator.active}|${operator.priority}|${operator.distributionRule?.active}`}
+        action={updateDistribution}
+        className="contents"
+      >
         <input type="hidden" name="operatorId" value={operator.id} />
         <div className="border-t border-border py-2 text-primary">{operator.name}</div>
         <div className="border-t border-border py-2 text-secondary">{operator.email}</div>
@@ -190,7 +198,13 @@ export function OperatorRow({
                       const access = accessByProductId.get(product.id);
                       return (
                         <form
-                          key={product.id}
+                          key={[
+                            product.id,
+                            access?.allowApproved,
+                            access?.allowPending,
+                            access?.dailyLimitApproved,
+                            access?.dailyLimitPending,
+                          ].join("|")}
                           action={updateProductAccess}
                           className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface px-3 py-2"
                         >
