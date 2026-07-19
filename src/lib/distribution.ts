@@ -122,10 +122,15 @@ function paymentStatusesForCategory(category: DistributionCategory): PaymentStat
 type ProductGrant = { operatorId: string; dailyLimit: number | null };
 
 /**
- * Quem está liberado pra receber este lead. Havendo qualquer marcação na tela
- * de acesso, só os marcados recebem; não havendo nenhuma, todo mundo recebe
- * (produto novo que ninguém configurou se comporta como antes). Lead recusado
- * não passa por essa trava — ela vale só pra aprovado e pendente.
+ * Quem está liberado pra receber este lead: só quem estiver marcado na tela de
+ * acesso daquele produtor. Ninguém marcado significa ninguém liberado — o lead
+ * fica em espera até alguém ser marcado, e o painel avisa em vermelho quais
+ * produtores estão assim. É o contrário do que valia antes (produtor sem
+ * marcação liberava pra equipe inteira), e é o contrário mais seguro: falha
+ * fechando, sem entregar venda a quem não devia ver.
+ *
+ * Recusado não passa por essa trava: não existe caixinha de recusados na tela,
+ * então gatear por ela deixaria esses leads sem dono nenhum, pra sempre.
  *
  * O casamento é pelo produto quando o lead traz um, e pelo PRODUTOR quando não
  * traz. Esse segundo caso é a regra hoje: os gateways mandam nome de oferta
@@ -152,7 +157,9 @@ async function grantsForLead(
     where,
     select: { operatorId: true, dailyLimitApproved: true, dailyLimitPending: true },
   });
-  if (grants.length === 0) return null;
+  // Lista vazia é uma resposta, não a ausência dela: ninguém marcado = ninguém
+  // liberado. Quem devolve null é só o caso em que a trava não se aplica.
+  if (grants.length === 0) return [];
 
   // Pelo produtor, a mesma pessoa pode aparecer em mais de um produto dele.
   // Fica valendo o limite diário mais apertado — e "sem limite" (null) não
@@ -246,6 +253,8 @@ export async function pickOperatorForLead(
 ): Promise<User | null> {
   const category = categoryForPaymentStatus(paymentStatus);
   const grants = await grantsForLead(productId, producerId, category);
+  // Produtor sem ninguém marcado: o lead espera, em vez de cair na equipe toda.
+  if (grants?.length === 0) return null;
   const allowedIds = grants ? new Set(grants.map((g) => g.operatorId)) : null;
 
   const weightField = weightFieldForCategory(category);

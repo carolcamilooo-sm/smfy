@@ -63,10 +63,22 @@ export function OperatorRow({
   removeOperator: (formData: FormData) => void;
 }) {
   const [productsOpen, setProductsOpen] = useState(false);
-  const totalProducts = productGroups.reduce((sum, g) => sum + g.products.length, 0);
   const grantedCount = Array.from(accessByProductId.values()).filter(
     (a) => a.allowApproved || a.allowPending
   ).length;
+
+  // Só os produtos que este atendente recebe. Listar o catálogo inteiro fazia
+  // a tela dizer "produtos liberados" mostrando sobretudo os que ele não tem.
+  // Pra liberar um produto novo, a marcação é feita na aba Produtores.
+  const grantedGroups = productGroups
+    .map((g) => ({
+      ...g,
+      products: g.products.filter((p) => {
+        const a = accessByProductId.get(p.id);
+        return Boolean(a?.allowApproved || a?.allowPending);
+      }),
+    }))
+    .filter((g) => g.products.length > 0);
 
   return (
     <Fragment>
@@ -81,13 +93,22 @@ export function OperatorRow({
           ) : share.approved == null ? (
             <span
               className="text-xs text-secondary"
-              title="Sem % fixa: entra no rodízio e recebe conforme trabalha a fila"
+              title="Sem % fixa em nenhuma categoria: recebe tudo pelo rodízio, conforme trabalha a fila"
             >
               rodízio
             </span>
           ) : (
-            <div>
-              <span className="font-mono text-xs text-primary">{fmtShare(share.approved)}</span>
+            // Quem está num grupo vive nos dois mundos: % garantida nas vendas
+            // e rodízio no resto. Mostrar só a % faria parecer que ele não
+            // recebe pendente.
+            <div title={`${fmtShare(share.approved)} dos aprovados pelo grupo; pendentes e recusados pelo rodízio, junto com a equipe`}>
+              <span className="text-xs">
+                <span className="font-mono font-semibold text-primary">
+                  {fmtShare(share.approved)}
+                </span>
+                <span className="text-muted"> aprov · </span>
+                <span className="text-secondary">rodízio</span>
+              </span>
               {share.groupName && (
                 <span className="block truncate text-[11px] text-muted">{share.groupName}</span>
               )}
@@ -150,11 +171,15 @@ export function OperatorRow({
           <p className="mb-2 text-xs font-semibold text-secondary">
             Produtos liberados para {operator.name}
           </p>
-          {totalProducts === 0 ? (
-            <p className="text-xs text-muted">Nenhum produto ativo cadastrado ainda.</p>
+          {grantedGroups.length === 0 ? (
+            <p className="text-xs text-muted">
+              Nenhum produto liberado — este atendente não recebe lead nenhum de
+              aprovados ou pendentes. Libere na aba Produtores, marcando o nome
+              dele no produto.
+            </p>
           ) : (
             <div className="space-y-3">
-              {productGroups.map((group) => (
+              {grantedGroups.map((group) => (
                 <div key={group.producerName}>
                   <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
                     {group.producerName}
@@ -228,12 +253,12 @@ export function OperatorRow({
             </div>
           )}
           <p className="mt-2 text-[11px] text-muted">
-            A marcação vale pra todos os leads do produtor, não só pra essa oferta — os
-            gateways mandam o nome da oferta, que muda o tempo todo, então quem manda é o
-            produtor. Se ninguém for marcado num produtor, ele fica liberado pra equipe
-            inteira. Limite/dia vazio = sem limite; ao bater o limite, o lead vai para
-            outro atendente liberado, só ficando em espera se ninguém mais estiver
-            disponível.
+            Aqui aparecem só os produtos que ele já recebe; para liberar um produto novo,
+            marque o nome dele na aba Produtores. A marcação vale pra todos os leads do
+            produtor, não só pra essa oferta — os gateways mandam o nome da oferta, que
+            muda o tempo todo, então quem manda é o produtor. Limite/dia vazio = sem
+            limite; ao bater o limite, o lead vai para outro atendente liberado, só
+            ficando em espera se ninguém mais estiver disponível.
           </p>
         </div>
       )}

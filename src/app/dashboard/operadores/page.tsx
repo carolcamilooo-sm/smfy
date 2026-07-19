@@ -260,15 +260,16 @@ export default async function OperadoresPage({
         </p>
         <p className="mb-4 text-xs text-secondary">
           Quem recebe o quê é decidido no botão <strong>Produtos</strong> de cada
-          atendente: sem estar marcado em aprovados de um produtor, ele não
-          recebe venda aprovada daquele produtor. A fatia automática vale só
-          entre os que estão liberados pra aquele lead. Leads recusados não
-          passam por essa trava — vão pra todo mundo.
+          atendente: só recebe leads de um produtor quem estiver marcado nele.
+          O rodízio e a % do grupo valem apenas entre os liberados pra aquele
+          lead. Leads recusados não passam por essa trava — vão pra todo mundo,
+          porque não existe marcação de recusados.
         </p>
         {produtoresSemTrava.length > 0 && (
-          <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-            Sem ninguém marcado, o produtor fica liberado pra equipe inteira.
-            Hoje está assim: <strong>{produtoresSemTrava.join(", ")}</strong>.
+          <p className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+            <strong>{produtoresSemTrava.join(", ")}</strong>: nenhum atendente
+            marcado. Os leads aprovados e pendentes desse produtor vão ficar em
+            espera até você marcar alguém no botão Produtos.
           </p>
         )}
         <div className="overflow-x-auto">
