@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmForm } from "@/components/confirm-form";
+import { fmtShare } from "@/lib/utils";
 
 type ProductAccessInfo = {
   allowApproved: boolean;
@@ -16,7 +17,17 @@ type ProductAccessInfo = {
 
 type ProductGroup = {
   producerName: string;
-  products: { id: string; name: string }[];
+  products: { id: string; name: string; active: boolean }[];
+};
+
+/**
+ * Fatia da conta nos leads aprovados. `null` = sem % fixa, entra no rodízio e
+ * recebe conforme trabalha a fila. Número = fatia garantida pela % do grupo.
+ * Pendentes e recusados não têm fatia: são sempre rodízio.
+ */
+export type OperatorShare = {
+  approved: number | null;
+  groupName: string | null;
 };
 
 function operatorStatusBadge(status: string) {
@@ -28,6 +39,7 @@ function operatorStatusBadge(status: string) {
 export function OperatorRow({
   operator,
   effectiveStatus,
+  share,
   productGroups,
   accessByProductId,
   updateDistribution,
@@ -40,14 +52,10 @@ export function OperatorRow({
     email: string;
     active: boolean;
     priority: boolean;
-    distributionRule: {
-      weightApproved: number;
-      weightPending: number;
-      weightDeclined: number;
-      active: boolean;
-    } | null;
+    distributionRule: { active: boolean } | null;
   };
   effectiveStatus: string;
+  share: OperatorShare | null;
   productGroups: ProductGroup[];
   accessByProductId: Map<string, ProductAccessInfo>;
   updateDistribution: (formData: FormData) => void;
@@ -68,34 +76,23 @@ export function OperatorRow({
         <div className="border-t border-border py-2 text-secondary">{operator.email}</div>
         <div className="border-t border-border py-2">{operatorStatusBadge(effectiveStatus)}</div>
         <div className="border-t border-border py-2">
-          <Input
-            type="number"
-            name="weightApproved"
-            min={0}
-            max={100}
-            defaultValue={operator.distributionRule?.weightApproved ?? 0}
-            className="w-16 font-mono"
-          />
-        </div>
-        <div className="border-t border-border py-2">
-          <Input
-            type="number"
-            name="weightPending"
-            min={0}
-            max={100}
-            defaultValue={operator.distributionRule?.weightPending ?? 0}
-            className="w-16 font-mono"
-          />
-        </div>
-        <div className="border-t border-border py-2">
-          <Input
-            type="number"
-            name="weightDeclined"
-            min={0}
-            max={100}
-            defaultValue={operator.distributionRule?.weightDeclined ?? 0}
-            className="w-16 font-mono"
-          />
+          {!share ? (
+            <span className="font-mono text-xs text-muted">—</span>
+          ) : share.approved == null ? (
+            <span
+              className="text-xs text-secondary"
+              title="Sem % fixa: entra no rodízio e recebe conforme trabalha a fila"
+            >
+              rodízio
+            </span>
+          ) : (
+            <div>
+              <span className="font-mono text-xs text-primary">{fmtShare(share.approved)}</span>
+              {share.groupName && (
+                <span className="block truncate text-[11px] text-muted">{share.groupName}</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="border-t border-border py-2">
           <input
@@ -149,7 +146,7 @@ export function OperatorRow({
       </ConfirmForm>
 
       {productsOpen && (
-        <div className="col-span-12 rounded-lg border border-border bg-app p-3">
+        <div className="col-span-10 rounded-lg border border-border bg-app p-3">
           <p className="mb-2 text-xs font-semibold text-secondary">
             Produtos liberados para {operator.name}
           </p>
@@ -175,6 +172,9 @@ export function OperatorRow({
                           <input type="hidden" name="operatorId" value={operator.id} />
                           <span className="w-40 shrink-0 truncate text-xs text-primary">
                             {product.name}
+                            {!product.active && (
+                              <span className="ml-1 text-[10px] text-muted">(inativo)</span>
+                            )}
                           </span>
                           <label className="flex items-center gap-1.5 text-xs text-secondary">
                             <input
@@ -228,9 +228,11 @@ export function OperatorRow({
             </div>
           )}
           <p className="mt-2 text-[11px] text-muted">
-            Sem nenhum produto liberado, esse atendente participa da distribuição geral (% por
-            categoria) normalmente. Limite/dia vazio = sem limite; ao bater o limite, o lead vai
-            para outro atendente liberado, só ficando em espera se ninguém mais estiver
+            A marcação vale pra todos os leads do produtor, não só pra essa oferta — os
+            gateways mandam o nome da oferta, que muda o tempo todo, então quem manda é o
+            produtor. Se ninguém for marcado num produtor, ele fica liberado pra equipe
+            inteira. Limite/dia vazio = sem limite; ao bater o limite, o lead vai para
+            outro atendente liberado, só ficando em espera se ninguém mais estiver
             disponível.
           </p>
         </div>

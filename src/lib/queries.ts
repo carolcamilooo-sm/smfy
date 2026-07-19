@@ -219,12 +219,25 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
 
   const volume = buildVolumeBuckets(leadsInRange, range);
 
+  // Quantos leads cada um recebeu de fato no período. Antes esta tela mostrava
+  // a % configurada, mas com a distribuição automática não existe mais % por
+  // atendente — o que cada um recebe depende do ritmo dele. Então o honesto é
+  // mostrar o que aconteceu de verdade, não uma meta.
+  const receivedMap = new Map<string, number>();
+  for (const lead of leadsInRange) {
+    if (!lead.assignedOperatorId) continue;
+    receivedMap.set(lead.assignedOperatorId, (receivedMap.get(lead.assignedOperatorId) ?? 0) + 1);
+  }
+  const totalAssignedInRange = [...receivedMap.values()].reduce((a, b) => a + b, 0);
+
   const operatorSummaries = operators.map((op) => ({
     id: op.id,
     name: op.name,
     email: op.email,
     effectiveStatus: getEffectiveStatus(op),
-    weightApproved: op.distributionRule?.weightApproved ?? 0,
+    receivedInRange: receivedMap.get(op.id) ?? 0,
+    shareOfReceived:
+      totalAssignedInRange > 0 ? ((receivedMap.get(op.id) ?? 0) / totalAssignedInRange) * 100 : 0,
     active: op.distributionRule?.active ?? false,
     attendedInRange: attendedMap.get(op.id) ?? 0,
   }));

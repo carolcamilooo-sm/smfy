@@ -12,6 +12,7 @@ import { LeadVolumeChart } from "@/components/lead-volume-chart";
 import { DashboardSortable } from "@/components/dashboard-sortable";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
 import { BR_TIMEZONE } from "@/lib/date-br";
+import { fmtShare } from "@/lib/utils";
 import { normalizeDashboardLayout, normalizeDashboardWidths, type DashboardBlockKey } from "@/lib/dashboard-layout";
 import { updateDashboardLayout, updateDashboardBlockWidth } from "./actions";
 
@@ -91,7 +92,8 @@ export default async function DashboardPage({
   const onlineCount = operatorSummaries.filter((op) => op.effectiveStatus !== "OFFLINE").length;
   const offlineCount = operatorSummaries.length - onlineCount;
 
-  const distribution = [...operatorSummaries].sort((a, b) => b.weightApproved - a.weightApproved);
+  const distribution = [...operatorSummaries].sort((a, b) => b.receivedInRange - a.receivedInRange);
+  const maxShare = distribution[0]?.shareOfReceived ?? 0;
 
   const blocks: Record<DashboardBlockKey, React.ReactNode> = {
     "buscar-atendimento": (
@@ -216,18 +218,26 @@ export default async function DashboardPage({
         <h2 className="mb-4 text-sm font-semibold text-title">
           Distribuição por atendente
         </h2>
-        <p className="mb-3 text-xs text-secondary">% de leads aprovados (vendas)</p>
+        <p className="mb-3 text-xs text-secondary">
+          Leads que cada um recebeu no período. Não é meta: com a distribuição
+          automática, recebe mais quem mantém a fila em dia.
+        </p>
         <div className="space-y-3">
           {distribution.map((op) => (
             <div key={op.id}>
               <div className="mb-1 flex items-center justify-between text-sm">
                 <span className="text-primary">{op.name}</span>
-                <span className="font-mono text-secondary">{op.weightApproved}%</span>
+                <span className="font-mono text-secondary">
+                  {op.receivedInRange} · {fmtShare(op.shareOfReceived)}
+                </span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-surface-raised">
+                {/* Barra proporcional ao maior, não a 100%: com muita gente na
+                    roda ninguém passa de uns poucos %, e uma barra de 7% de
+                    largura não se enxerga. */}
                 <div
                   className="h-full rounded-full bg-accent"
-                  style={{ width: `${Math.min(100, op.weightApproved)}%` }}
+                  style={{ width: `${maxShare > 0 ? (op.shareOfReceived / maxShare) * 100 : 0}%` }}
                 />
               </div>
             </div>
@@ -315,7 +325,7 @@ export default async function DashboardPage({
               <tr className="text-xs text-secondary">
                 <th className="pb-2">Nome</th>
                 <th className="pb-2">Status</th>
-                <th className="pb-2">% Aprovados</th>
+                <th className="pb-2">Recebidos</th>
                 <th className="pb-2">Atendidos</th>
               </tr>
             </thead>
@@ -324,7 +334,7 @@ export default async function DashboardPage({
                 <tr key={op.id} className="border-t border-border">
                   <td className="py-2 text-primary">{op.name}</td>
                   <td className="py-2">{operatorStatusDot(op.effectiveStatus)}</td>
-                  <td className="py-2 font-mono text-secondary">{op.weightApproved}%</td>
+                  <td className="py-2 font-mono text-secondary">{op.receivedInRange}</td>
                   <td className="py-2 font-mono text-secondary">{op.attendedInRange}</td>
                 </tr>
               ))}

@@ -42,25 +42,20 @@ function GroupForm({
           <span className="mb-1 block text-[11px] text-muted">Nome do grupo</span>
           <Input name="name" defaultValue={group.name} required className="h-8 py-1 text-sm" />
         </div>
-        {(
-          [
-            ["weightApproved", "% Aprov", group.weightApproved],
-            ["weightPending", "% Pend", group.weightPending],
-            ["weightDeclined", "% Recus", group.weightDeclined],
-          ] as const
-        ).map(([field, label, val]) => (
-          <div key={field} className="w-16">
-            <span className="mb-1 block text-[11px] text-muted">{label}</span>
-            <Input
-              name={field}
-              type="number"
-              min={0}
-              max={100}
-              defaultValue={val}
-              className="h-8 py-1 text-center text-sm"
-            />
-          </div>
-        ))}
+        {/* Só aprovados: o grupo existe pra privilegiar quem converte melhor
+            nas vendas. Pendente e recusado esses mesmos atendentes recebem
+            pelo rodízio normal, junto com o resto da equipe. */}
+        <div className="w-20">
+          <span className="mb-1 block text-[11px] text-muted">% Aprovados</span>
+          <Input
+            name="weightApproved"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={group.weightApproved}
+            className="h-8 py-1 text-center text-sm"
+          />
+        </div>
         <label className="flex items-center gap-1.5 pb-1.5 text-xs text-secondary">
           <input type="checkbox" name="active" defaultChecked={group.active} className="h-3.5 w-3.5" />
           Ativo
@@ -70,7 +65,7 @@ function GroupForm({
       {/* Contas do grupo */}
       <div className="mt-3 border-t border-border pt-3">
         <span className="mb-2 block text-[11px] text-muted">
-          Contas deste operador (marque as contas do {group.name})
+          Quem faz parte do {group.name} (a % acima é dividida entre os marcados)
         </span>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
           {operators.map((op) => {
@@ -107,7 +102,7 @@ function GroupForm({
         </SubmitButton>
         <ConfirmForm
           action={removeGroup}
-          confirmMessage={`Remover o grupo "${group.name}"? As ${group.memberCount} conta(s) voltam a ser individuais (peso próprio).`}
+          confirmMessage={`Remover o grupo "${group.name}"? As ${group.memberCount} conta(s) perdem a fatia garantida e voltam pro rodízio normal.`}
         >
           <input type="hidden" name="id" value={group.id} />
           <Button type="submit" variant="danger" className="py-1 text-xs">
@@ -158,9 +153,17 @@ export function AttendanceGroups({
         </button>
       </div>
       <p className="mb-4 text-xs text-secondary">
-        Uma pessoa com várias contas (ex: automações em máquinas diferentes). O
-        grupo tem uma % por categoria, dividida entre as contas online — se uma
-        cai, as outras absorvem, mantendo o total do grupo.
+        O grupo é como você dá uma fatia maior das <strong>vendas</strong> a
+        quem converte melhor. Ex: um grupo <strong>Top 5</strong> com 60%
+        garante 60% dos leads aprovados pra essas 5 contas (12% cada), e os
+        outros 40% ficam com o resto da equipe. Serve também pra limitar quem
+        tem várias contas: 20% no grupo é 20% no total, não importa quantas
+        contas ele tenha.
+      </p>
+      <p className="mb-4 text-xs text-muted">
+        A % vale só pra aprovados. Pendentes e recusados essas mesmas contas
+        recebem pelo rodízio normal, junto com a equipe toda. Se uma conta do
+        grupo cai, as outras absorvem a fatia dela — o total do grupo não muda.
       </p>
 
       {!expanded && groups.length > 0 && (
@@ -171,7 +174,7 @@ export function AttendanceGroups({
               className="rounded-lg border border-border bg-app px-3 py-1.5 text-xs text-secondary"
             >
               <span className="font-semibold text-primary">{g.name}</span> ·{" "}
-              {g.memberCount} conta(s) · {g.weightApproved}/{g.weightPending}/{g.weightDeclined}%
+              {g.memberCount} conta(s) · {g.weightApproved}% dos aprovados
               {!g.active && " · inativo"}
             </span>
           ))}

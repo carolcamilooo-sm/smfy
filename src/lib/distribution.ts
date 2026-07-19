@@ -24,13 +24,33 @@ export function categoryForPaymentStatus(status: PaymentStatus): DistributionCat
   return "pending";
 }
 
-type CategoryWeights = {
+export type CategoryWeights = {
   weightApproved: number;
   weightPending: number;
   weightDeclined: number;
 } | null | undefined;
 
-function weightForCategory(rule: CategoryWeights, category: DistributionCategory): number {
+export type GroupWeights =
+  | ({ active: boolean } & NonNullable<CategoryWeights>)
+  | null
+  | undefined;
+
+/**
+ * O grupo só vale na categoria em que tem % configurada. Um grupo "Top 5" com
+ * 60% em aprovados e nada nas outras dá aos 5 uma fatia garantida das vendas,
+ * sem tirá-los do rodízio normal de pendentes e recusados — nessas eles contam
+ * como conta individual.
+ */
+export function grupoValeNaCategoria(
+  group: GroupWeights,
+  category: DistributionCategory
+): boolean {
+  return Boolean(group?.active) && weightForCategory(group, category) > 0;
+}
+
+export const DISTRIBUTION_CATEGORIES = ["approved", "pending", "declined"] as const;
+
+export function weightForCategory(rule: CategoryWeights, category: DistributionCategory): number {
   if (!rule) return 1;
   if (category === "approved") return rule.weightApproved;
   if (category === "declined") return rule.weightDeclined;
@@ -38,27 +58,52 @@ function weightForCategory(rule: CategoryWeights, category: DistributionCategory
 }
 
 /**
- * Peso efetivo de uma conta na distribuição. Numa conta de grupo, é a % do
- * grupo dividida pelas contas do grupo elegíveis pra ESTE lead — então o total
- * do grupo se mantém quando uma conta cai (as outras absorvem), e as contas do
- * grupo dividem entre si por igual. Fora de grupo, é a regra individual.
+ * Reparte os 100% de uma categoria entre os grupos e as contas individuais.
+ *
+ * Só os grupos têm % configurada: cada grupo reserva a dele e divide entre as
+ * próprias contas disponíveis — se uma cai, as outras absorvem, e o total do
+ * grupo não muda. O que sobra dos grupos é dividido em partes iguais entre as
+ * contas individuais, automaticamente, sem precisar configurar nada.
+ *
+ * Um grupo sem nenhuma conta disponível não segura a fatia dele: ela volta pro
+ * bolo dos individuais. E se não sobrar nenhum individual, os grupos ficam com
+ * tudo, proporcionalmente às suas %.
  */
-export function effectiveWeight(
-  op: { groupId: string | null; group: CategoryWeights; distributionRule: CategoryWeights },
-  category: DistributionCategory,
-  groupEligibleCount: Map<string, number>
-): number {
-  if (op.groupId && op.group) {
-    const n = groupEligibleCount.get(op.groupId) ?? 1;
-    return weightForCategory(op.group, category) / n;
-  }
-  return weightForCategory(op.distributionRule, category);
-}
+export function splitShares<T extends { id: string; groupId: string | null; group: GroupWeights }>(
+  available: T[],
+  category: DistributionCategory
+): Map<string, number> {
+  const perGroup = new Map<string, { weight: number; count: number }>();
+  let individuals = 0;
 
-function distributionRuleFilterForCategory(category: DistributionCategory) {
-  if (category === "approved") return { active: true, weightApproved: { gt: 0 } };
-  if (category === "declined") return { active: true, weightDeclined: { gt: 0 } };
-  return { active: true, weightPending: { gt: 0 } };
+  for (const op of available) {
+    if (op.groupId && grupoValeNaCategoria(op.group, category)) {
+      const entry = perGroup.get(op.groupId);
+      if (entry) entry.count += 1;
+      else perGroup.set(op.groupId, { weight: weightForCategory(op.group, category), count: 1 });
+    } else {
+      individuals += 1;
+    }
+  }
+
+  let reservedByGroups = 0;
+  for (const { weight } of perGroup.values()) reservedByGroups += weight;
+
+  // Math.max(0): se as % dos grupos passarem de 100 (config errada), os
+  // individuais ficam zerados em vez de virarem peso negativo.
+  const individualShare =
+    individuals > 0 ? Math.max(0, 100 - reservedByGroups) / individuals : 0;
+
+  const shares = new Map<string, number>();
+  for (const op of available) {
+    if (op.groupId && perGroup.has(op.groupId)) {
+      const { weight, count } = perGroup.get(op.groupId)!;
+      shares.set(op.id, weight / count);
+    } else {
+      shares.set(op.id, individualShare);
+    }
+  }
+  return shares;
 }
 
 /** Campo de peso da categoria, pra filtrar grupos com peso > 0. */
@@ -77,46 +122,130 @@ function paymentStatusesForCategory(category: DistributionCategory): PaymentStat
 type ProductGrant = { operatorId: string; dailyLimit: number | null };
 
 /**
- * If a product has any explicit ProductAccess grants for this category,
- * only the granted operators are eligible — otherwise every operator is
- * (backward compatible: a product nobody configured behaves like before).
- * Declined/"pagamento recusado" leads aren't gated by product, only approved/pending.
- * Each grant carries its own optional daily cap for that category.
+ * Quem está liberado pra receber este lead. Havendo qualquer marcação na tela
+ * de acesso, só os marcados recebem; não havendo nenhuma, todo mundo recebe
+ * (produto novo que ninguém configurou se comporta como antes). Lead recusado
+ * não passa por essa trava — ela vale só pra aprovado e pendente.
+ *
+ * O casamento é pelo produto quando o lead traz um, e pelo PRODUTOR quando não
+ * traz. Esse segundo caso é a regra hoje: os gateways mandam nome de oferta
+ * ("3 Mitocondril + 2 Ebooks - OB 2"), que não bate com o nome cadastrado
+ * ("ENCAPSULADO GABI-MITOCONDRIL"), então o lead fica sem produto. O produtor,
+ * esse sim, vem certo em 100% dos leads — é nele que a trava se apoia.
  */
-async function productGrantsForCategory(
+async function grantsForLead(
   productId: string | null | undefined,
+  producerId: string | null | undefined,
   category: DistributionCategory
 ): Promise<ProductGrant[] | null> {
-  if (!productId || category === "declined") return null;
+  if (category === "declined") return null;
+
+  const allow = category === "approved" ? { allowApproved: true } : { allowPending: true };
+  const where = productId
+    ? { productId, ...allow }
+    : producerId
+      ? { product: { is: { producerId } }, ...allow }
+      : null;
+  if (!where) return null;
 
   const grants = await prisma.productAccess.findMany({
-    where: {
-      productId,
-      ...(category === "approved" ? { allowApproved: true } : { allowPending: true }),
-    },
+    where,
     select: { operatorId: true, dailyLimitApproved: true, dailyLimitPending: true },
   });
   if (grants.length === 0) return null;
-  return grants.map((g) => ({
-    operatorId: g.operatorId,
-    dailyLimit: category === "approved" ? g.dailyLimitApproved : g.dailyLimitPending,
-  }));
+
+  // Pelo produtor, a mesma pessoa pode aparecer em mais de um produto dele.
+  // Fica valendo o limite diário mais apertado — e "sem limite" (null) não
+  // apaga um limite que exista noutro produto.
+  const byOperator = new Map<string, number | null>();
+  for (const g of grants) {
+    const limit = category === "approved" ? g.dailyLimitApproved : g.dailyLimitPending;
+    if (!byOperator.has(g.operatorId)) {
+      byOperator.set(g.operatorId, limit);
+      continue;
+    }
+    const atual = byOperator.get(g.operatorId)!;
+    if (atual == null || (limit != null && limit < atual)) byOperator.set(g.operatorId, limit);
+  }
+  return [...byOperator].map(([operatorId, dailyLimit]) => ({ operatorId, dailyLimit }));
 }
 
 /**
- * Picks the eligible operator whose today-assigned/weight ratio is lowest
- * *within the lead's payment category*, so each category (Aprovados/
- * Pendentes/Recusados) converges independently on the proportions the admin
- * configured, even though each invocation is stateless (serverless-safe
- * weighted round robin). Operators marked "priority" are always preferred
- * over non-priority ones when both are eligible.
+ * A escolha em si, separada do banco pra poder ser simulada e testada. São
+ * dois níveis, cada um respondendo por uma coisa diferente:
+ *
+ * 1) Qual balde — cada grupo é um balde, e todas as contas individuais juntas
+ *    formam outro. Ganha o de menor razão recebidos-hoje / fatia. É isso que
+ *    garante os 20% do grupo, independente de quem trabalha mais ou menos.
+ * 2) Quem, dentro do balde — ganha a menor fila do dia. É aqui que quem zera
+ *    rápido recebe mais: trabalhou a fila, volta pro topo; deixou acumular,
+ *    sai da roda até dar conta. Empate vai pra quem recebeu menos hoje.
+ */
+export function chooseByQueue<T extends { id: string; groupId: string | null; group: GroupWeights }>(
+  eligible: T[],
+  category: DistributionCategory,
+  shares: Map<string, number>,
+  receivedToday: Map<string, number>,
+  openToday: Map<string, number>
+): T {
+  const INDIVIDUAIS = "__individuais__";
+  type Balde = { share: number; received: number; members: T[] };
+  const baldes = new Map<string, Balde>();
+  for (const op of eligible) {
+    const key =
+      op.groupId && grupoValeNaCategoria(op.group, category) ? op.groupId : INDIVIDUAIS;
+    const balde = baldes.get(key) ?? { share: 0, received: 0, members: [] };
+    balde.share += shares.get(op.id) ?? 0;
+    balde.received += receivedToday.get(op.id) ?? 0;
+    balde.members.push(op);
+    baldes.set(key, balde);
+  }
+
+  let escolhido: Balde | null = null;
+  let melhorRazao = Infinity;
+  for (const balde of baldes.values()) {
+    const razao = balde.share > 0 ? balde.received / balde.share : Infinity;
+    if (razao < melhorRazao) {
+      melhorRazao = razao;
+      escolhido = balde;
+    }
+  }
+  // Só cai no fallback se todo balde tiver fatia zero — grupos somando mais
+  // de 100%, que a tela avisa em vermelho.
+  const balde = escolhido ?? baldes.values().next().value!;
+
+  let chosen = balde.members[0];
+  let menorFila = Infinity;
+  let menosRecebidos = Infinity;
+  for (const op of balde.members) {
+    const fila = openToday.get(op.id) ?? 0;
+    const recebidos = receivedToday.get(op.id) ?? 0;
+    if (fila < menorFila || (fila === menorFila && recebidos < menosRecebidos)) {
+      menorFila = fila;
+      menosRecebidos = recebidos;
+      chosen = op;
+    }
+  }
+  return chosen;
+}
+
+/**
+ * Escolhe quem recebe o lead. Monta a lista de elegíveis — online, liberado
+ * pelo acesso do produtor, dentro do limite diário — e entrega a decisão pro
+ * chooseByQueue. Cada categoria (aprovados, pendentes, recusados) converge
+ * sozinha, e nada é guardado entre chamadas: tudo sai de contagens do dia, que
+ * é o que funciona num ambiente serverless.
+ *
+ * Quem está marcado como prioridade passa na frente sempre que estiver
+ * elegível.
  */
 export async function pickOperatorForLead(
   paymentStatus: PaymentStatus,
-  productId?: string | null
+  productId?: string | null,
+  producerId?: string | null
 ): Promise<User | null> {
   const category = categoryForPaymentStatus(paymentStatus);
-  const grants = await productGrantsForCategory(productId, category);
+  const grants = await grantsForLead(productId, producerId, category);
   const allowedIds = grants ? new Set(grants.map((g) => g.operatorId)) : null;
 
   const weightField = weightFieldForCategory(category);
@@ -126,18 +255,26 @@ export async function pickOperatorForLead(
       status: "ONLINE",
       active: true,
       ...(allowedIds ? { id: { in: Array.from(allowedIds) } } : {}),
-      // Elegível se tem peso individual > 0 (conta solta) OU está num grupo
-      // ativo com peso > 0 na categoria. Contas de grupo têm a regra individual
-      // zerada — o peso delas vem do grupo.
+      // Entra quem está com a distribuição ligada, ou quem está num grupo com
+      // % nesta categoria. O segundo caso cobre a conta que tem a distribuição
+      // individual desligada mas participa pelo grupo.
       OR: [
-        { groupId: null, distributionRule: distributionRuleFilterForCategory(category) },
+        { distributionRule: { is: { active: true } } },
         { group: { is: { active: true, [weightField]: { gt: 0 } } } },
       ],
     },
     include: { distributionRule: true, group: true },
   });
 
-  let eligible = operators.filter((op) => getEffectiveStatus(op) === "ONLINE");
+  // Quem entrou só pelo grupo precisa que o grupo valha nesta categoria; quem
+  // entrou pela regra individual precisa dela ligada. Sem esse filtro, alguém
+  // com a distribuição desligada passaria a receber pendentes só por estar num
+  // grupo que só tem % em aprovados.
+  let eligible = operators.filter(
+    (op) =>
+      getEffectiveStatus(op) === "ONLINE" &&
+      (grupoValeNaCategoria(op.group, category) || op.distributionRule?.active === true)
+  );
   if (eligible.length === 0) return null;
 
   const todayStart = startOfToday();
@@ -146,7 +283,7 @@ export async function pickOperatorForLead(
   // who hit their product daily limit must drop out of the whole pool, not
   // just lose to a same-priority-tier rival, so the lead can still fall
   // back to any other liberado operator (priority or not) before WAITING.
-  if (productId && grants) {
+  if (grants && (productId || producerId)) {
     const dailyLimitMap = new Map(grants.map((g) => [g.operatorId, g.dailyLimit]));
     const capped = grants.filter((g) => g.dailyLimit != null).map((g) => g.operatorId);
     if (capped.length > 0) {
@@ -154,7 +291,10 @@ export async function pickOperatorForLead(
         by: ["assignedOperatorId"],
         where: {
           assignedOperatorId: { in: eligible.map((op) => op.id).filter((id) => capped.includes(id)) },
-          productId,
+          // Conta pelo mesmo critério da trava: por produto quando o lead tem
+          // produto, senão pelo produtor. Contar por produto num lead sem
+          // produto daria zero sempre, e o limite diário nunca pegaria.
+          ...(productId ? { productId } : { producerId }),
           assignedAt: { gte: todayStart },
           paymentStatus: { in: paymentStatusesForCategory(category) },
         },
@@ -188,32 +328,35 @@ export async function pickOperatorForLead(
     counts.map((c) => [c.assignedOperatorId as string, c._count._all])
   );
 
-  // Conta quantas contas de cada grupo sobraram elegíveis (após online, acesso,
-  // cap e a estreita por prioridade acima). É por esse número que a % do grupo
-  // se divide — então se metade do grupo caiu, a outra metade pesa o dobro.
-  const groupEligibleCount = new Map<string, number>();
-  for (const op of eligible) {
-    if (op.groupId) groupEligibleCount.set(op.groupId, (groupEligibleCount.get(op.groupId) ?? 0) + 1);
-  }
+  // Fila do dia: leads que a pessoa recebeu hoje e ainda não atendeu. Conta
+  // todas as categorias, porque é a carga real dela. Só do dia — se contasse
+  // o atraso acumulado, quem vem de um dia pesado ficaria travado por dias, e
+  // isso pegaria justamente quem mais recebe (que costuma ser quem mais atende).
+  const openCounts = await prisma.lead.groupBy({
+    by: ["assignedOperatorId"],
+    where: {
+      assignedOperatorId: { in: eligible.map((op) => op.id) },
+      serviceStatus: "ASSIGNED",
+      assignedAt: { gte: todayStart },
+    },
+    _count: { _all: true },
+  });
+  const openMap = new Map(
+    openCounts.map((c) => [c.assignedOperatorId as string, c._count._all])
+  );
 
-  let chosen = eligible[0];
-  let bestRatio = Infinity;
-  for (const op of eligible) {
-    const weight = effectiveWeight(op, category, groupEligibleCount);
-    const assignedToday = countMap.get(op.id) ?? 0;
-    const ratio = weight > 0 ? assignedToday / weight : Infinity;
-    if (ratio < bestRatio) {
-      bestRatio = ratio;
-      chosen = op;
-    }
-  }
-  return chosen;
+  // O rateio é feito sobre quem sobrou de verdade (online, com acesso, dentro
+  // do limite e do corte por prioridade) — então quem caiu no meio do caminho
+  // tem a fatia absorvida pelos que ficaram, e não some da conta.
+  const shares = splitShares(eligible, category);
+
+  return chooseByQueue(eligible, category, shares, countMap, openMap);
 }
 
 export async function assignLead(
   lead: Lead
 ): Promise<Lead & { assignedOperator: { name: string } | null }> {
-  const operator = await pickOperatorForLead(lead.paymentStatus, lead.productId);
+  const operator = await pickOperatorForLead(lead.paymentStatus, lead.productId, lead.producerId);
 
   if (!operator) {
     return prisma.lead.update({
@@ -257,7 +400,7 @@ export async function rescueWaitingLeads(): Promise<void> {
   });
 
   for (const lead of waiting) {
-    const operator = await pickOperatorForLead(lead.paymentStatus, lead.productId);
+    const operator = await pickOperatorForLead(lead.paymentStatus, lead.productId, lead.producerId);
     if (!operator) break;
     await assignLead(lead);
   }

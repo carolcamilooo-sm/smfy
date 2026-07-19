@@ -49,13 +49,7 @@ async function main() {
     await prisma.distributionRule.upsert({
       where: { operatorId: operator.id },
       update: {},
-      create: {
-        operatorId: operator.id,
-        weightApproved: 1,
-        weightPending: 1,
-        weightDeclined: 1,
-        active: true,
-      },
+      create: { operatorId: operator.id, active: true },
     });
     console.log(`Operador: ${operator.email} / senha: operador123`);
 

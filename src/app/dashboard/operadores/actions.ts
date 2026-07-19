@@ -14,16 +14,11 @@ export async function approveOperator(formData: FormData) {
     data: { approvalStatus: "APPROVED" },
   });
 
+  // Já entra na distribuição: a fatia é automática, não tem % pra preencher.
   await prisma.distributionRule.upsert({
     where: { operatorId },
     update: {},
-    create: {
-      operatorId,
-      weightApproved: 1,
-      weightPending: 1,
-      weightDeclined: 1,
-      active: true,
-    },
+    create: { operatorId, active: true },
   });
 
   revalidatePath("/dashboard/operadores");
@@ -82,13 +77,15 @@ function clampPercent(value: FormDataEntryValue | null) {
   return Math.min(100, Math.max(0, Number(value) || 0));
 }
 
+/**
+ * A conta individual não tem mais % própria: ela só liga ou desliga da
+ * distribuição, e a fatia sai automática (ver splitShares). Por isso aqui só
+ * mexemos em `active` — os pesos antigos ficam no banco, intocados.
+ */
 export async function updateDistribution(formData: FormData) {
   await requireDashboardAccess();
 
   const operatorId = String(formData.get("operatorId"));
-  const weightApproved = clampPercent(formData.get("weightApproved"));
-  const weightPending = clampPercent(formData.get("weightPending"));
-  const weightDeclined = clampPercent(formData.get("weightDeclined"));
   const active = formData.get("active") === "on";
   const userActive = formData.get("userActive") === "on";
   const priority = formData.get("priority") === "on";
@@ -96,8 +93,8 @@ export async function updateDistribution(formData: FormData) {
   await prisma.$transaction([
     prisma.distributionRule.upsert({
       where: { operatorId },
-      update: { weightApproved, weightPending, weightDeclined, active },
-      create: { operatorId, weightApproved, weightPending, weightDeclined, active },
+      update: { active },
+      create: { operatorId, active },
     }),
     prisma.user.update({
       where: { id: operatorId },
@@ -133,8 +130,10 @@ export async function updateGroup(formData: FormData) {
       data: {
         name,
         weightApproved: clampPercent(formData.get("weightApproved")),
-        weightPending: clampPercent(formData.get("weightPending")),
-        weightDeclined: clampPercent(formData.get("weightDeclined")),
+        // O grupo só privilegia venda aprovada. Zerados, pendente e recusado
+        // caem no rodízio normal pros membros — que é o que a tela promete.
+        weightPending: 0,
+        weightDeclined: 0,
         active: formData.get("active") === "on",
       },
     }),

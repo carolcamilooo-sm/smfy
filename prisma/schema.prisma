@@ -87,6 +87,12 @@ model User {
   @@map("users")
 }
 
+/// Participação de uma conta individual na distribuição. Hoje só `active`
+/// importa: é o liga/desliga do atendente. A fatia dele é automática — as
+/// contas individuais dividem em partes iguais o que sobra das % dos grupos.
+/// Os três pesos abaixo são herança do modelo antigo (% por atendente), não
+/// são mais lidos por nada; ficaram só pra não perder o histórico do que
+/// estava configurado.
 model DistributionRule {
   id             String  @id @default(cuid())
   operatorId     String  @unique
