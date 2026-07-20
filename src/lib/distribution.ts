@@ -237,14 +237,20 @@ async function grantsForLead(
  * 1) Qual balde — cada grupo é um balde, e todas as contas individuais juntas
  *    formam outro. Ganha o de menor razão recebidos-hoje / fatia. É isso que
  *    garante os 20% do grupo, independente de quem trabalha mais ou menos.
- * 2) Quem, dentro do balde — ganha a menor fila do dia. É aqui que quem zera
- *    rápido recebe mais: trabalhou a fila, volta pro topo; deixou acumular,
- *    sai da roda até dar conta. Empate vai pra quem recebeu menos hoje.
+ * 2) Quem, dentro do balde — rodízio: ganha quem está há mais tempo sem
+ *    receber. Quem acabou de receber vai pro fim da fila, e o ciclo roda um
+ *    por vez.
+ *
+ * O critério é "há quanto tempo não recebe", e não "quantos recebeu hoje", de
+ * propósito. Contagem acumulada faz quem está atrás no placar receber centenas
+ * seguidos até alcançar os outros — que é justamente o efeito de blocos que se
+ * quer evitar. Hora do último lead não tem esse acúmulo: seja qual for o
+ * histórico, depois de receber a pessoa cede a vez.
  */
 export function chooseByQueue<T extends { id: string }>(
   baldes: Balde<T>[],
   receivedToday: Map<string, number>,
-  openToday: Map<string, number>
+  lastAssigned: Map<string, Date>
 ): T | null {
   if (baldes.length === 0) return null;
 
@@ -265,13 +271,15 @@ export function chooseByQueue<T extends { id: string }>(
   const balde = escolhido ?? baldes[0];
 
   let chosen = balde.membros[0];
-  let menorFila = Infinity;
+  let maisAntigo = Infinity;
   let menosRecebidos = Infinity;
   for (const op of balde.membros) {
-    const fila = openToday.get(op.id) ?? 0;
+    // Quem nunca recebeu (entrou agora, ou não pegou nada hoje) entra na
+    // frente: é quem está esperando há mais tempo.
+    const quando = lastAssigned.get(op.id)?.getTime() ?? -Infinity;
     const recebidos = receivedToday.get(op.id) ?? 0;
-    if (fila < menorFila || (fila === menorFila && recebidos < menosRecebidos)) {
-      menorFila = fila;
+    if (quando < maisAntigo || (quando === maisAntigo && recebidos < menosRecebidos)) {
+      maisAntigo = quando;
       menosRecebidos = recebidos;
       chosen = op;
     }
@@ -364,6 +372,8 @@ export async function pickOperatorForLead(
   const priorityEligible = eligible.filter((op) => op.priority);
   if (priorityEligible.length > 0) eligible = priorityEligible;
 
+  // Duas coisas da mesma consulta: quantos cada um recebeu hoje (usado pra
+  // manter a % dos grupos) e a hora do último lead de cada um (o rodízio).
   const counts = await prisma.lead.groupBy({
     by: ["assignedOperatorId"],
     where: {
@@ -372,32 +382,21 @@ export async function pickOperatorForLead(
       paymentStatus: { in: paymentStatusesForCategory(category) },
     },
     _count: { _all: true },
+    _max: { assignedAt: true },
   });
   const countMap = new Map(
     counts.map((c) => [c.assignedOperatorId as string, c._count._all])
   );
-
-  // Fila do dia: leads que a pessoa recebeu hoje e ainda não atendeu. Conta
-  // todas as categorias, porque é a carga real dela. Só do dia — se contasse
-  // o atraso acumulado, quem vem de um dia pesado ficaria travado por dias, e
-  // isso pegaria justamente quem mais recebe (que costuma ser quem mais atende).
-  const openCounts = await prisma.lead.groupBy({
-    by: ["assignedOperatorId"],
-    where: {
-      assignedOperatorId: { in: eligible.map((op) => op.id) },
-      serviceStatus: "ASSIGNED",
-      assignedAt: { gte: todayStart },
-    },
-    _count: { _all: true },
-  });
-  const openMap = new Map(
-    openCounts.map((c) => [c.assignedOperatorId as string, c._count._all])
+  const lastAssignedMap = new Map(
+    counts.flatMap((c) =>
+      c._max.assignedAt ? [[c.assignedOperatorId as string, c._max.assignedAt] as const] : []
+    )
   );
 
   // Os baldes saem de quem sobrou de verdade (online, com acesso, dentro do
   // limite e do corte por prioridade) — então quem caiu no caminho tem a fatia
   // absorvida pelos que ficaram, e não some da conta.
-  return chooseByQueue(montarBaldes(eligible, category), countMap, openMap);
+  return chooseByQueue(montarBaldes(eligible, category), countMap, lastAssignedMap);
 }
 
 export async function assignLead(
