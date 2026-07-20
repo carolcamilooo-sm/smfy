@@ -32,7 +32,14 @@ function GroupForm({
   updateGroup: Action;
   removeGroup: Action;
 }) {
+  // O "Remover grupo" tem form próprio, e um form dentro de outro é HTML
+  // inválido: o botão de dentro acabava submetendo o de fora, então Remover
+  // salvava em vez de apagar. O form de remover fica ao lado, e o botão se
+  // liga a ele pelo atributo `form` — assim os dois botões seguem lado a lado.
+  const removeFormId = `remove-group-${group.id}`;
+
   return (
+    <>
     <form action={updateGroup} className="rounded-lg border border-border bg-app p-3">
       <input type="hidden" name="id" value={group.id} />
 
@@ -88,17 +95,20 @@ function GroupForm({
         <SubmitButton variant="secondary" className="py-1 text-xs">
           Salvar
         </SubmitButton>
-        <ConfirmForm
-          action={removeGroup}
-          confirmMessage={`Remover o grupo "${group.name}"? As ${group.memberCount} conta(s) perdem a fatia garantida e voltam pro rodízio normal.`}
-        >
-          <input type="hidden" name="id" value={group.id} />
-          <Button type="submit" variant="danger" className="py-1 text-xs">
-            Remover grupo
-          </Button>
-        </ConfirmForm>
+        <Button type="submit" form={removeFormId} variant="danger" className="py-1 text-xs">
+          Remover grupo
+        </Button>
       </div>
     </form>
+
+    <ConfirmForm
+      id={removeFormId}
+      action={removeGroup}
+      confirmMessage={`Remover o grupo "${group.name}"? As ${group.memberCount} conta(s) perdem a fatia das vendas deste grupo; a participação delas em outros grupos continua.`}
+    >
+      <input type="hidden" name="id" value={group.id} />
+    </ConfirmForm>
+    </>
   );
 }
 
