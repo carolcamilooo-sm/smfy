@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLeadsHistory } from "@/lib/queries";
+import { getLeadsHistory, getLeadsPorAtendente } from "@/lib/queries";
 import { prisma } from "@/lib/db";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,34 +30,46 @@ export default async function HistoricoPage({
     status?: string;
     period?: string;
     producerId?: string;
+    operatorId?: string;
     page?: string;
   }>;
 }) {
-  const { q, status, period, producerId, page } = await searchParams;
+  const { q, status, period, producerId, operatorId, page } = await searchParams;
   const statusParam =
     status === "approved" || status === "pending" || status === "declined" || status === "other"
       ? status
       : undefined;
 
-  const [{ leads, total, page: currentPage, totalPages, range }, producers] = await Promise.all([
-    getLeadsHistory({
-      q,
-      status: statusParam,
-      producerId,
-      period,
-      page: page ? Number(page) : 1,
-    }),
-    prisma.producer.findMany({
-      select: { id: true, name: true, active: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const [{ leads, total, page: currentPage, totalPages, range }, producers, operators, porAtendente] =
+    await Promise.all([
+      getLeadsHistory({
+        q,
+        status: statusParam,
+        producerId,
+        operatorId,
+        period,
+        page: page ? Number(page) : 1,
+      }),
+      prisma.producer.findMany({
+        select: { id: true, name: true, active: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.user.findMany({
+        where: { role: "OPERATOR", approvalStatus: "APPROVED" },
+        select: { id: true, name: true, active: true },
+        orderBy: { name: "asc" },
+      }),
+      getLeadsPorAtendente({ q, status: statusParam, producerId, period }),
+    ]);
+
+  const totalNoPeriodo = porAtendente.linhas.reduce((s, l) => s + l.count, 0);
 
   function pageHref(target: number) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (status) params.set("status", status);
     if (producerId) params.set("producerId", producerId);
+    if (operatorId) params.set("operatorId", operatorId);
     params.set("period", range.period);
     params.set("page", String(target));
     return `?${params.toString()}`;
@@ -122,10 +134,61 @@ export default async function HistoricoPage({
             </option>
           ))}
         </select>
+        <select
+          name="operatorId"
+          defaultValue={operatorId ?? ""}
+          className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm text-secondary focus:border-accent focus:outline-none"
+        >
+          <option value="">Todos os atendentes</option>
+          <option value="none">Sem atendente (em espera)</option>
+          {operators.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+              {!o.active ? " (desativado)" : ""}
+            </option>
+          ))}
+        </select>
         <Button type="submit" variant="secondary">
           Filtrar
         </Button>
       </form>
+
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold text-title">Leads por atendente</h2>
+          <span className="text-xs text-secondary">
+            {PERIOD_OPTIONS.find((p) => p.value === range.period)?.label ?? range.period} ·{" "}
+            <span className="font-mono text-primary">{totalNoPeriodo}</span> no total
+          </span>
+        </div>
+        {porAtendente.linhas.length === 0 ? (
+          <p className="text-xs text-secondary">Nenhum lead no período.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {porAtendente.linhas.map((l) => {
+              const selecionado = (operatorId ?? "") === (l.operatorId ?? "none");
+              return (
+                <span
+                  key={l.operatorId ?? "none"}
+                  className={
+                    "rounded-lg border px-3 py-1.5 text-xs " +
+                    (selecionado
+                      ? "border-accent bg-accent/10 text-primary"
+                      : "border-border bg-app text-secondary")
+                  }
+                >
+                  {l.name} <span className="font-mono font-semibold text-primary">{l.count}</span>
+                </span>
+              );
+            })}
+          </div>
+        )}
+        <p className="mt-3 text-[11px] text-muted">
+          Conta os leads que chegaram no período e foram entregues a cada um.
+          Selecionar um atendente no filtro acima só muda a tabela — esta lista
+          continua mostrando a equipe toda, pra dar comparação.
+        </p>
+      </div>
 
       <form
         method="get"
@@ -135,6 +198,7 @@ export default async function HistoricoPage({
         <input type="hidden" name="q" value={q ?? ""} />
         <input type="hidden" name="status" value={status ?? ""} />
         <input type="hidden" name="producerId" value={producerId ?? ""} />
+        <input type="hidden" name="operatorId" value={operatorId ?? ""} />
         <input type="hidden" name="period" value={range.period} />
         <div>
           <label className="mb-1.5 block text-xs text-secondary">

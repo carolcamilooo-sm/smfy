@@ -502,6 +502,8 @@ export type LeadsHistoryParams = DateRangeParams & {
   q?: string;
   status?: LeadsSaleStatus;
   producerId?: string;
+  /** "none" filtra os que ficaram sem atendente (em espera). */
+  operatorId?: string;
   page?: number;
 };
 
@@ -514,7 +516,7 @@ const SALE_STATUS_MAP: Record<LeadsSaleStatus, Prisma.LeadWhereInput["paymentSta
 
 /** Shared by getLeadsHistory (paginated view) and the CSV export, so both filter identically. */
 function buildLeadsHistoryWhere(
-  params: Pick<LeadsHistoryParams, "q" | "status" | "producerId">,
+  params: Pick<LeadsHistoryParams, "q" | "status" | "producerId" | "operatorId">,
   range: DateRange
 ): Prisma.LeadWhereInput {
   const where: Prisma.LeadWhereInput = {
@@ -527,6 +529,10 @@ function buildLeadsHistoryWhere(
 
   if (params.producerId) {
     where.producerId = params.producerId;
+  }
+
+  if (params.operatorId) {
+    where.assignedOperatorId = params.operatorId === "none" ? null : params.operatorId;
   }
 
   const q = params.q?.trim();
@@ -572,10 +578,46 @@ export async function getLeadsHistory(params: LeadsHistoryParams) {
   };
 }
 
+/**
+ * Quantos leads cada atendente recebeu, com os mesmos filtros da tela. Serve
+ * pra responder "quanto fulano pegou hoje" sem precisar selecionar um por um.
+ *
+ * Ignora o filtro de atendente de propósito: selecionar uma pessoa deve
+ * destacar a linha dela, e não esconder o resto da equipe — é a comparação que
+ * dá sentido ao número.
+ */
+export async function getLeadsPorAtendente(
+  params: Pick<LeadsHistoryParams, "q" | "status" | "producerId" | "period" | "from" | "to">
+) {
+  const range = resolveDateRange({ period: params.period ?? "7d", from: params.from, to: params.to });
+  const where = buildLeadsHistoryWhere({ ...params, operatorId: undefined }, range);
+
+  const [grupos, operadores] = await Promise.all([
+    prisma.lead.groupBy({
+      by: ["assignedOperatorId"],
+      where,
+      _count: { _all: true },
+    }),
+    prisma.user.findMany({ where: { role: "OPERATOR" }, select: { id: true, name: true } }),
+  ]);
+
+  const nomes = new Map(operadores.map((o) => [o.id, o.name]));
+  const linhas = grupos.map((g) => ({
+    operatorId: g.assignedOperatorId,
+    name: g.assignedOperatorId
+      ? (nomes.get(g.assignedOperatorId) ?? "Atendente removido")
+      : "Sem atendente (em espera)",
+    count: g._count._all,
+  }));
+
+  return { range, linhas: linhas.sort((a, b) => b.count - a.count) };
+}
+
 export type LeadsExportParams = DateRangeParams & {
   q?: string;
   status?: LeadsSaleStatus;
   producerId?: string;
+  operatorId?: string;
   limit: number;
 };
 
