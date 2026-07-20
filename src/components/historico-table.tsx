@@ -3,12 +3,24 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { brDateParts, brHour, brMinute } from "@/lib/date-br";
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
+/**
+ * Data e hora sempre em Brasília, e não no relógio de quem abre a tela: o
+ * servidor roda em UTC, então sem fixar o fuso a mesma linha mostraria horas
+ * diferentes dependendo de onde a página foi montada. São os mesmos ajudantes
+ * que o export em CSV usa, pra tela e planilha nunca discordarem.
+ */
 function formatDate(date: Date | string) {
+  const { year, month, day } = brDateParts(new Date(date));
+  return `${String(day).padStart(2, "0")} ${MONTHS[month]} ${year}`;
+}
+
+function formatTime(date: Date | string) {
   const d = new Date(date);
-  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return `${String(brHour(d)).padStart(2, "0")}:${String(brMinute(d)).padStart(2, "0")}`;
 }
 
 function saleStatusBadge(status: string) {
@@ -92,7 +104,9 @@ export function HistoricoTable({ leads }: { leads: Lead[] }) {
               <th className="px-4 py-3">Status da venda</th>
               <th className="px-4 py-3">Atendente</th>
               <th className="px-4 py-3">Atendimento</th>
-              <th className="px-4 py-3">Data</th>
+              <th className="px-4 py-3" title="Quando o lead entrou no SMFY, pelo webhook do gateway">
+                Chegou em
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +128,10 @@ export function HistoricoTable({ leads }: { leads: Lead[] }) {
                 <td className="px-4 py-3">{saleStatusBadge(lead.paymentStatus)}</td>
                 <td className="px-4 py-3 text-secondary">{lead.assignedOperator?.name ?? "-"}</td>
                 <td className="px-4 py-3">{serviceStatusBadge(lead.serviceStatus)}</td>
-                <td className="px-4 py-3 font-mono text-xs text-secondary">{formatDate(lead.createdAt)}</td>
+                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-secondary">
+                  {formatDate(lead.createdAt)}{" "}
+                  <span className="text-primary">{formatTime(lead.createdAt)}</span>
+                </td>
               </tr>
             ))}
             {leads.length === 0 && (
