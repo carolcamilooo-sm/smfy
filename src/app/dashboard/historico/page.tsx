@@ -64,6 +64,25 @@ export default async function HistoricoPage({
 
   const totalNoPeriodo = porAtendente.linhas.reduce((s, l) => s + l.count, 0);
 
+  // Descreve, em palavras, os filtros que estão valendo — pra o informativo
+  // dizer "de que" é a contagem, e não só um número solto.
+  const periodoLabel = PERIOD_OPTIONS.find((p) => p.value === range.period)?.label ?? range.period;
+  const filtrosAtivos: string[] = [];
+  if (statusParam) {
+    filtrosAtivos.push(STATUS_OPTIONS.find((o) => o.value === statusParam)?.label ?? statusParam);
+  }
+  if (producerId) {
+    filtrosAtivos.push(producers.find((p) => p.id === producerId)?.name ?? "produtor");
+  }
+  if (operatorId) {
+    filtrosAtivos.push(
+      operatorId === "none"
+        ? "sem atendente"
+        : (operators.find((o) => o.id === operatorId)?.name ?? "atendente")
+    );
+  }
+  if (q?.trim()) filtrosAtivos.push(`busca "${q.trim()}"`);
+
   function pageHref(target: number) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -152,6 +171,22 @@ export default async function HistoricoPage({
           Filtrar
         </Button>
       </form>
+
+      {/* Informativo do filtro: a contagem em destaque, com os filtros ativos
+          escritos por extenso. É o mesmo `total` do rodapé da tabela, mas aqui
+          em cima e legível — responde "quantos batem com o que filtrei". */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
+        <span className="font-mono text-2xl font-bold text-primary">{total}</span>
+        <span className="text-sm text-secondary">
+          {total === 1 ? "lead" : "leads"} · {periodoLabel.toLowerCase()}
+          {filtrosAtivos.length > 0 && (
+            <>
+              {" · "}
+              <span className="text-primary">{filtrosAtivos.join(" · ")}</span>
+            </>
+          )}
+        </span>
+      </div>
 
       <div className="rounded-xl border border-border bg-surface p-4">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
