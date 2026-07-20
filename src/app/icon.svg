@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    Balão de conversa da marca. Sem fundo: o SVG é transparente por natureza,
+    então o ícone assume a cor da aba, clara ou escura.
+
+    Traço e bolinhas propositalmente grossos — num favicon de 16px, contorno
+    fino vira um borrão cinza.
+  -->
+  <g fill="none" stroke="#bf00ff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 27.3 52.1
+             A 27 23.5 0 1 0 9.9 42.5
+             C 8.6 47.6 7.4 52.2 3.6 57.4
+             C 12.4 56.6 20.2 54.6 27.3 52.1 Z" />
+  </g>
+  <g fill="#bf00ff">
+    <circle cx="18" cy="29" r="4.2" />
+    <circle cx="32" cy="29" r="4.2" />
+    <circle cx="46" cy="29" r="4.2" />
+  </g>
+</svg>
