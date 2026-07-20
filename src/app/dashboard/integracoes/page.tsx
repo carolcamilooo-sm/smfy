@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { prisma } from "@/lib/db";
+import { getBaseUrl } from "@/lib/base-url";
+import { CompanySalesWebhookCard } from "@/components/company-sales-webhook-card";
+import { gerarWebhookVendas, salvarSegredoVendas, removerWebhookVendas } from "./actions";
+
+export const dynamic = "force-dynamic";
 
 const GATEWAYS = [
   {
@@ -30,7 +36,12 @@ const GATEWAYS = [
   },
 ];
 
-export default function IntegracoesPage() {
+export default async function IntegracoesPage() {
+  const [baseUrl, vendasSmpay] = await Promise.all([
+    getBaseUrl(),
+    prisma.companySalesWebhook.findUnique({ where: { gateway: "SMPAY" } }),
+  ]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -44,6 +55,20 @@ export default function IntegracoesPage() {
           para pegar a URL certa.
         </p>
       </div>
+
+      <CompanySalesWebhookCard
+        gateway="smpay"
+        label="SMPay"
+        url={
+          vendasSmpay
+            ? `${baseUrl}/api/webhooks/company-sales/smpay?token=${vendasSmpay.token}`
+            : null
+        }
+        temSegredo={Boolean(vendasSmpay?.secret)}
+        gerar={gerarWebhookVendas}
+        salvarSegredo={salvarSegredoVendas}
+        remover={removerWebhookVendas}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {GATEWAYS.map((gw) => (

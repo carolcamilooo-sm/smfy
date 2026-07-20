@@ -126,6 +126,23 @@ model AttendanceGroup {
   @@map("attendance_groups")
 }
 
+/// Webhook de vendas da empresa: um por gateway, valendo pra operação toda.
+/// Diferente do webhook pessoal (User.salesWebhookToken), aqui não se sabe de
+/// antemão de quem é a venda — o dono sai de casar o comprador com um lead da
+/// fila, pelo CPF, telefone ou e-mail.
+model CompanySalesWebhook {
+  id        String   @id @default(cuid())
+  gateway   Gateway  @unique
+  token     String   @unique
+  /// Segredo de assinatura do gateway, quando ele assina o corpo (a SMPay
+  /// assina). Vazio significa aceitar sem conferir assinatura.
+  secret    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("company_sales_webhooks")
+}
+
 model Producer {
   id                  String   @id @default(cuid())
   name                String
@@ -216,11 +233,16 @@ model Lead {
   createdAt           DateTime      @default(now())
 
   events LeadEvent[]
+  sales  OperatorSale[] @relation("SaleFromLead")
 
   @@unique([producerId, gateway, externalId])
   @@index([createdAt])
   @@index([serviceStatus])
   @@index([assignedOperatorId])
+  // O casamento da venda com o lead é por CPF, telefone ou e-mail; sem estes
+  // índices, cada webhook varreria a tabela inteira (13 mil linhas e subindo).
+  @@index([document])
+  @@index([phone])
   @@map("leads")
 }
 
@@ -264,6 +286,15 @@ model OperatorSale {
   paymentStatus PaymentStatus @default(APPROVED)
   rawPayload    Json
   createdAt     DateTime      @default(now())
+
+  /// Lead que originou a venda, quando ela veio pelo webhook da empresa e o
+  /// comprador foi casado com alguém da fila. Nulo nas vendas que o próprio
+  /// atendente reporta pelo webhook pessoal, onde não há lead a casar.
+  ///
+  /// Guardar o lead (e não só o atendente) é o que deixa medir depois quanto
+  /// tempo o cliente levou pra pagar: o atendimento tem data, a venda também.
+  leadId        String?
+  lead          Lead?         @relation("SaleFromLead", fields: [leadId], references: [id], onDelete: SetNull)
 
   @@unique([operatorId, gateway, externalId])
   @@index([operatorId, createdAt])
