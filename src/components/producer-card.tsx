@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, RotateCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -181,12 +181,6 @@ export function ProducerCard({
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <form action={regenerateToken}>
-            <input type="hidden" name="producerId" value={producer.id} />
-            <Button type="submit" variant="secondary">
-              Gerar novo token
-            </Button>
-          </form>
           <ConfirmForm
             action={removeProducer}
             confirmMessage={
@@ -405,7 +399,31 @@ export function ProducerCard({
                 {url}
               </code>
               <CopyButton value={url} />
+              {/* Fica aqui, e não no cabeçalho: trocar o token é assunto desta
+                  URL. Discreto e com confirmação porque um clique sem querer
+                  derruba a entrada de leads até alguém atualizar o gateway —
+                  foi assim que o Cash No Pix ficou 6h sem receber. */}
+              <ConfirmForm
+                action={regenerateToken}
+                confirmMessage={`Gerar um token novo para "${producer.name}"?\n\nA URL atual para de funcionar na hora, e os leads do ${gateway.label} PARAM DE CHEGAR até você colar a URL nova lá no painel deles.\n\nSó faça isso se o token vazou.`}
+              >
+                <input type="hidden" name="producerId" value={producer.id} />
+                {/* Mesmas classes e mesmo ícone do Copiar: assim os dois têm a
+                    altura idêntica sem chumbar pixel. A cor é que separa —
+                    apagado, e vermelho só no hover. */}
+                <button
+                  type="submit"
+                  title="Gera um token novo e invalida a URL atual"
+                  className="inline-flex h-full shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold text-muted hover:border-danger/50 hover:text-danger"
+                >
+                  <RotateCw size={14} /> Novo token
+                </button>
+              </ConfirmForm>
             </div>
+            <p className="mt-1.5 text-[11px] text-muted">
+              Trocou o token? Copie a URL de novo e atualize no painel do{" "}
+              {gateway.label} — senão os leads param de chegar.
+            </p>
 
             {gateway.secretField && (
               <form
