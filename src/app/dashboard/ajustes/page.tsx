@@ -1,12 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmForm } from "@/components/confirm-form";
 import { ProfileForm } from "@/components/profile-form";
 import { PasswordForm } from "@/components/password-form";
 import { createCollaborator, removeCollaborator } from "./collaborator-actions";
+import { CollaboratorForm } from "@/components/collaborator-form";
 
 export const dynamic = "force-dynamic";
 
@@ -80,24 +80,7 @@ export default async function AjustesPage() {
             </div>
           )}
 
-          <form
-            action={createCollaborator}
-            className="grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-[1.2fr_1.4fr_1fr_auto] sm:items-end"
-          >
-            <div>
-              <label className="mb-1.5 block text-xs text-secondary">Nome</label>
-              <Input name="name" placeholder="Nome do colaborador" required />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs text-secondary">E-mail</label>
-              <Input name="email" type="email" placeholder="email@exemplo.com" required />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs text-secondary">Senha</label>
-              <Input name="password" type="password" placeholder="6+ caracteres" minLength={6} required />
-            </div>
-            <Button type="submit">Cadastrar</Button>
-          </form>
+          <CollaboratorForm createCollaborator={createCollaborator} />
         </Card>
       )}
     </div>
