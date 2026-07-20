@@ -126,6 +126,21 @@ model AttendanceGroup {
   @@map("attendance_groups")
 }
 
+/// Recado que o admin escreve e todo atendente vê na barra lateral. Uma linha
+/// só na tabela: é um mural, não um histórico — o aviso novo substitui o
+/// anterior, como um quadro que se apaga e reescreve.
+model GlobalNotice {
+  id        String   @id @default("global")
+  content   String
+  /// Quem escreveu por último, pra ninguém precisar adivinhar de quem é o
+  /// recado. Fica só o nome: se a conta for removida, o aviso continua de pé.
+  authorName String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("global_notices")
+}
+
 /// Webhook de vendas da empresa: um por gateway, valendo pra operação toda.
 /// Diferente do webhook pessoal (User.salesWebhookToken), aqui não se sabe de
 /// antemão de quem é a venda — o dono sai de casar o comprador com um lead da

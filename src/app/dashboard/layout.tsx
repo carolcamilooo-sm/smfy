@@ -7,6 +7,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getTheme } from "@/lib/theme";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Toaster } from "@/components/toaster";
+import { GlobalNoticeCard } from "@/components/global-notice-card";
+import { getGlobalNotice } from "@/lib/global-notice";
+import { saveGlobalNotice } from "@/lib/global-notice-actions";
 
 function initials(name: string) {
   return name
@@ -22,7 +25,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, theme] = await Promise.all([auth(), getTheme()]);
+  const [session, theme, notice] = await Promise.all([auth(), getTheme(), getGlobalNotice()]);
   const name = session?.user.name ?? "";
   const roleLabel = session?.user.role === "COLLABORATOR" ? "Colaborador" : "Admin";
 
@@ -42,6 +45,17 @@ export default async function DashboardLayout({
         <div className="mt-4 flex flex-col gap-3">
           <SidebarClock />
           <ThemeToggle />
+          {/* key com o texto do servidor: publicado o aviso, o card remonta,
+              fecha o editor e mostra o resultado — em vez de deixar quem
+              escreveu olhando o formulário sem saber se pegou. */}
+          <GlobalNoticeCard
+            key={notice?.content ?? "vazio"}
+            content={notice?.content ?? null}
+            authorName={notice?.authorName ?? null}
+            updatedAt={notice?.updatedAt ?? null}
+            podeEditar
+            save={saveGlobalNotice}
+          />
         </div>
 
         <div className="mt-auto flex flex-col gap-3">

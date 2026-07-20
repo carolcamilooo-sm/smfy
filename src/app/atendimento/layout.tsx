@@ -11,6 +11,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getTheme } from "@/lib/theme";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Toaster } from "@/components/toaster";
+import { GlobalNoticeCard } from "@/components/global-notice-card";
+import { getGlobalNotice } from "@/lib/global-notice";
 
 function initials(name: string) {
   return name
@@ -26,7 +28,7 @@ export default async function AtendimentoLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, theme] = await Promise.all([auth(), getTheme()]);
+  const [session, theme, notice] = await Promise.all([auth(), getTheme(), getGlobalNotice()]);
   const name = session?.user.name ?? "";
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: session!.user.id },
@@ -50,6 +52,13 @@ export default async function AtendimentoLayout({
         <div className="mt-4 flex flex-col gap-3">
           <SidebarClock />
           <ThemeToggle />
+          {/* Só leitura: quem publica é o admin. Sem aviso, nem aparece. */}
+          <GlobalNoticeCard
+            content={notice?.content ?? null}
+            authorName={notice?.authorName ?? null}
+            updatedAt={notice?.updatedAt ?? null}
+            podeEditar={false}
+          />
         </div>
 
         <OnlineStatusCard
