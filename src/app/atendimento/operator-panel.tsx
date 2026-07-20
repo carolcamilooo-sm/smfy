@@ -434,8 +434,9 @@ export function OperatorPanel({
                     onCopied={() => handleCopyLink(lead)}
                   />
                   {hasAttendWebhook && (
+                    // Mesma variante do "Atender": as duas são a ação principal
+                    // do lead, só mudam o caminho (WhatsApp ou extensão).
                     <Button
-                      variant="secondary"
                       onClick={() => handleAtenderHook(lead)}
                       disabled={pending === lead.id}
                       className="w-full"
@@ -515,8 +516,9 @@ export function OperatorPanel({
                           Atender
                         </Button>
                         {hasAttendWebhook && (
+                          // Mesma variante do "Atender": as duas são a ação
+                          // principal, só muda o caminho (WhatsApp ou extensão).
                           <Button
-                            variant="secondary"
                             onClick={() => handleAtenderHook(lead)}
                             disabled={pending === lead.id}
                             title="Enviar esse lead pra sua extensão"
