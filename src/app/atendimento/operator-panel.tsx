@@ -209,6 +209,46 @@ export function OperatorPanel({
 
   // Copiar o número não marca nada sozinho: quem confirma é o atendente, senão
   // um clique sem querer tiraria o lead da fila.
+  /**
+   * O mesmo link que o botão Atender abriria, com a mensagem escolhida já
+   * dentro. Recalculado a cada render, então acompanha a troca de mensagem no
+   * seletor. Sem mensagem cadastrada, vai só o número — o WhatsApp abre igual,
+   * em branco.
+   */
+  function linkWhatsApp(lead: QueueLead) {
+    const doLead = templatesDoLead(lead);
+    const template = doLead.find(
+      (t) => t.id === (selectedTemplate[lead.id] ?? doLead[0]?.id)
+    );
+    const message = template
+      ? fillTemplate(template.content, { nome: lead.customerName, produto: lead.product })
+      : "";
+    return buildWhatsAppUrl(lead.phone, message);
+  }
+
+  async function handleCopyLink(lead: QueueLead) {
+    const doLead = templatesDoLead(lead);
+    const templateId = selectedTemplate[lead.id] ?? doLead[0]?.id;
+    const ok = confirm(
+      `Link de ${lead.customerName} copiado, já com a mensagem. Marcar como atendido? Ele sai da sua fila.`
+    );
+    if (!ok) return;
+
+    setPending(lead.id);
+    try {
+      await fetch(`/api/leads/${lead.id}/atender`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Manda o templateId pra ficar registrado qual mensagem foi usada,
+        // igual acontece quando ele clica em Atender.
+        body: JSON.stringify({ templateId }),
+      });
+      router.refresh();
+    } finally {
+      setPending(null);
+    }
+  }
+
   async function handleCopyAtender(lead: QueueLead) {
     const ok = confirm(
       `Número de ${lead.customerName} copiado. Marcar como atendido? Ele sai da sua fila.`
@@ -386,6 +426,13 @@ export function OperatorPanel({
                     title="Copiar número do lead"
                     onCopied={() => handleCopyAtender(lead)}
                   />
+                  <CopyButton
+                    value={linkWhatsApp(lead)}
+                    label="Copiar link"
+                    copiedLabel="Link copiado"
+                    title="Copia o link do WhatsApp já com a mensagem escolhida"
+                    onCopied={() => handleCopyLink(lead)}
+                  />
                   {hasAttendWebhook && (
                     <Button
                       variant="secondary"
@@ -481,6 +528,13 @@ export function OperatorPanel({
                           value={lead.phone}
                           title="Copiar número do lead"
                           onCopied={() => handleCopyAtender(lead)}
+                        />
+                        <CopyButton
+                          value={linkWhatsApp(lead)}
+                          label="Copiar link"
+                          copiedLabel="Link copiado"
+                          title="Copia o link do WhatsApp já com a mensagem escolhida"
+                          onCopied={() => handleCopyLink(lead)}
                         />
                       </div>
                     </td>

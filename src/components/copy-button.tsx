@@ -9,12 +9,16 @@ export function CopyButton({
   className,
   title,
   onCopied,
+  label = "Copiar",
+  copiedLabel = "Copiado",
 }: {
   value: string;
   className?: string;
   title?: string;
   /** Chamado depois que o valor foi pro clipboard. */
   onCopied?: () => void;
+  label?: string;
+  copiedLabel?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -37,11 +41,11 @@ export function CopyButton({
     >
       {copied ? (
         <>
-          <Check size={14} className="text-success" /> Copiado
+          <Check size={14} className="text-success" /> {copiedLabel}
         </>
       ) : (
         <>
-          <Copy size={14} /> Copiar
+          <Copy size={14} /> {label}
         </>
       )}
     </button>
