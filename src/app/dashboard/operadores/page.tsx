@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getEffectiveStatus, fatiaAprovadosPorConta } from "@/lib/distribution";
-import { getSalesRanking } from "@/lib/queries";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn, fmtShare } from "@/lib/utils";
+import { fmtShare } from "@/lib/utils";
 import { OperatorRow } from "./operator-row";
 import { AttendanceGroups } from "@/components/attendance-groups";
 import { updateProductAccess } from "@/app/dashboard/produtores/actions";
@@ -21,12 +19,6 @@ import {
 } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const RANKING_PERIODS = [
-  { value: "today", label: "Hoje" },
-  { value: "7d", label: "Últimos 7 dias" },
-  { value: "month", label: "Este mês" },
-];
 
 /**
  * Como as vendas aprovadas se repartem entre os grupos. Sem individuais na
@@ -64,13 +56,8 @@ function resumoAprovados(
   );
 }
 
-export default async function OperadoresPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ rankingPeriod?: string }>;
-}) {
-  const { rankingPeriod } = await searchParams;
-  const [operators, pending, rejected, deactivated, products, productAccesses, groups, { range: rankingRange, ranking }] =
+export default async function OperadoresPage() {
+  const [operators, pending, rejected, deactivated, products, productAccesses, groups] =
     await Promise.all([
       prisma.user.findMany({
         where: { role: "OPERATOR", approvalStatus: "APPROVED", active: true },
@@ -111,7 +98,6 @@ export default async function OperadoresPage({
         orderBy: { name: "asc" },
         include: { members: { select: { id: true } } },
       }),
-      getSalesRanking({ period: rankingPeriod }),
     ]);
 
   // Fatia esperada nas vendas: a % de cada grupo em relação às dos outros,
@@ -315,54 +301,6 @@ export default async function OperadoresPage({
             </span>
           </div>
         )}
-      </Card>
-
-      <Card>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-title">
-            Ranking de vendas (webhook pessoal)
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {RANKING_PERIODS.map((p) => (
-              <Link
-                key={p.value}
-                href={`?rankingPeriod=${p.value}`}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-                  rankingRange.period === p.value
-                    ? "bg-accent text-app"
-                    : "border border-border bg-surface text-secondary hover:text-primary"
-                )}
-              >
-                {p.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-        <p className="mb-4 text-xs text-secondary">
-          Contagem de vendas confirmadas pelo webhook pessoal de cada
-          atendente (Ajustes → Meu webhook de vendas) — os atendentes só
-          veem o top 5 e a própria posição; aqui você vê todo mundo.
-        </p>
-        <div className="space-y-1.5">
-          {ranking.map((entry, i) => (
-            <div
-              key={entry.operatorId}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-app px-4 py-2.5"
-            >
-              <span className="text-sm text-primary">
-                <span className="mr-2 font-mono text-xs text-muted">{i + 1}º</span>
-                {entry.name}
-              </span>
-              <span className="font-mono text-sm font-semibold text-accent">
-                {entry.count}
-              </span>
-            </div>
-          ))}
-          {ranking.length === 0 && (
-            <p className="text-sm text-secondary">Nenhum operador cadastrado ainda.</p>
-          )}
-        </div>
       </Card>
 
       {deactivated.length > 0 && (

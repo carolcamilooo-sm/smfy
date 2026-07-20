@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/produtores", label: "Produtores" },
   { href: "/dashboard/operadores", label: "Equipe de Atendimento" },
+  { href: "/dashboard/ranking", label: "Ranking de vendas" },
   { href: "/dashboard/integracoes", label: "Integrações" },
   { href: "/dashboard/ajustes", label: "Ajustes" },
   { href: "/dashboard/historico", label: "Histórico" },
