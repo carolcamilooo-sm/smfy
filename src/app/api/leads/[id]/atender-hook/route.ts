@@ -57,6 +57,11 @@ export async function POST(
 
   // lead.phone já é gravado normalizado (55 + DDD + número) na entrada do webhook.
   const payload = {
+    // De qual conta SMFY saiu o disparo. Os nomes levam o prefixo "operator"
+    // porque `email` e `name`, sem prefixo, são do cliente — quem recebe não
+    // pode ter dúvida sobre de quem é cada um.
+    operatorEmail: operator.email,
+    operatorName: operator.name,
     leadId: lead.id,
     name: lead.customerName,
     phone: lead.phone,

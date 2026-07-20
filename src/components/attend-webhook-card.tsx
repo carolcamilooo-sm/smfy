@@ -20,7 +20,10 @@ export function AttendWebhookCard({
       </p>
       <p className="mb-3 text-[11px] text-muted">
         Enviamos: nome, telefone, e-mail, CPF, produto (nome, código e sigla),
-        produtor, valor, status do pagamento e a mensagem já montada.
+        produtor, valor, status do pagamento e a mensagem já montada. Vai junto
+        o e-mail da sua conta aqui no SMFY, em <code className="font-mono">
+        operatorEmail</code>, pra sua extensão saber de qual conta veio o
+        disparo.
       </p>
       <form action={saveUrl} className="flex gap-1.5">
         <div className="min-w-0 flex-1">
