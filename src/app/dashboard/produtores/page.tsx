@@ -19,6 +19,8 @@ import {
   reactivateProducer,
   setLastWebhookGateway,
 } from "./actions";
+import { ImportLeadsCard } from "@/components/import-leads-card";
+import { analisarPlanilha, importarPlanilha } from "./import-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +75,16 @@ export default async function ProdutoresPage() {
           <Button type="submit">Adicionar produtor</Button>
         </form>
       </Card>
+
+      <ImportLeadsCard
+        produtores={producers.map((p) => ({
+          id: p.id,
+          name: p.name,
+          products: p.products.map((pr) => ({ id: pr.id, name: pr.name })),
+        }))}
+        analisar={analisarPlanilha}
+        importar={importarPlanilha}
+      />
 
       <div className="space-y-4">
         {producers.map((producer) => (
