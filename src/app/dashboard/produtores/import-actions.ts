@@ -118,6 +118,8 @@ export async function importarPlanilha(
         externalId: v.externalId,
         customerName: v.customerName,
         phone: v.phone,
+        document: v.document,
+        email: v.email,
         product: produto?.name ?? null,
         productId: produto?.id ?? null,
         value: v.value,

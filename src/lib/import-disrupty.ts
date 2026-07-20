@@ -29,6 +29,8 @@ export type LinhaImportada = {
   externalId: string;
   customerName: string;
   phone: string;
+  document: string | null;
+  email: string | null;
   value: number | null;
   paymentStatus: PaymentStatus;
   createdAt: Date;
@@ -119,6 +121,24 @@ function lerValor(bruto: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Guarda o documento só se tiver cara de CPF (11 dígitos) ou CNPJ (14). O
+ * campo costuma vir com lixo — já existe lead gravado com "00000000000" — e
+ * lixo aqui não é inofensivo: apareceria na mensagem enviada ao cliente pelo
+ * {{doc}}, e poderia casar uma venda com a pessoa errada.
+ */
+function lerDocumento(bruto: string): string | null {
+  const digitos = (bruto ?? "").replace(/\D/g, "");
+  if (digitos.length !== 11 && digitos.length !== 14) return null;
+  if (/^(\d)\1+$/.test(digitos)) return null;
+  return digitos;
+}
+
+function lerEmail(bruto: string): string | null {
+  const limpo = (bruto ?? "").trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(limpo) ? limpo : null;
+}
+
 /** "20/07/2026" -> Date no início daquele dia em Brasília (UTC-3). */
 function lerData(bruto: string): Date | null {
   const m = bruto.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -152,6 +172,10 @@ export function lerPlanilhaDisrupty(texto: string): LeituraPlanilha {
   const iTelefone = col("Telefone");
   const iValor = col("Valor Bruto (R$)", "Valor Bruto", "Valor");
   const iStatus = col("Status");
+  // Opcionais: o export padrão não traz, mas se a planilha tiver, aproveita.
+  // Vários nomes porque cada export chama de um jeito.
+  const iDoc = col("CPF", "CPF/CNPJ", "Documento", "Doc", "CPF do Cliente");
+  const iEmail = col("E-mail", "Email", "E-mail do Cliente");
 
   const validas: LinhaImportada[] = [];
   const problemas: LinhaComProblema[] = [];
@@ -195,6 +219,8 @@ export function lerPlanilhaDisrupty(texto: string): LeituraPlanilha {
       externalId,
       customerName: ((iCliente >= 0 ? linha[iCliente] : "") ?? "").trim() || "Sem nome",
       phone: telefone,
+      document: iDoc >= 0 ? lerDocumento(linha[iDoc] ?? "") : null,
+      email: iEmail >= 0 ? lerEmail(linha[iEmail] ?? "") : null,
       value: iValor >= 0 ? lerValor(linha[iValor] ?? "") : null,
       paymentStatus,
       // Sem data legível, usa agora — melhor que recusar a linha inteira.
