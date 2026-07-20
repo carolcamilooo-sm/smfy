@@ -31,6 +31,7 @@ type QueueLead = {
   id: string;
   customerName: string;
   phone: string;
+  document: string | null;
   product: string | null;
   producerId: string | null;
   producer: { name: string } | null;
@@ -166,6 +167,7 @@ export function OperatorPanel({
     const message = fillTemplate(template.content, {
       nome: lead.customerName,
       produto: lead.product,
+      doc: lead.document,
     });
     const url = buildWhatsAppUrl(lead.phone, message);
 
@@ -221,7 +223,11 @@ export function OperatorPanel({
       (t) => t.id === (selectedTemplate[lead.id] ?? doLead[0]?.id)
     );
     const message = template
-      ? fillTemplate(template.content, { nome: lead.customerName, produto: lead.product })
+      ? fillTemplate(template.content, {
+          nome: lead.customerName,
+          produto: lead.product,
+          doc: lead.document,
+        })
       : "";
     return buildWhatsAppUrl(lead.phone, message);
   }

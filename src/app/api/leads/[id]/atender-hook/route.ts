@@ -51,6 +51,7 @@ export async function POST(
       message = fillTemplate(template.content, {
         nome: lead.customerName,
         produto: lead.product,
+        doc: lead.document,
       });
     }
   }

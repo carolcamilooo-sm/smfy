@@ -153,12 +153,16 @@ export default async function MeusProdutosPage() {
           mandar a copy de um produto no cliente de outro. Use{" "}
           <code className="rounded bg-surface px-1 py-0.5 font-mono text-accent">
             {"{{nome}}"}
-          </code>{" "}
-          e{" "}
+          </code>
+          ,{" "}
           <code className="rounded bg-surface px-1 py-0.5 font-mono text-accent">
             {"{{produto}}"}
           </code>{" "}
-          como variáveis.
+          e{" "}
+          <code className="rounded bg-surface px-1 py-0.5 font-mono text-accent">
+            {"{{doc}}"}
+          </code>{" "}
+          como variáveis — o CPF sai formatado, tipo 028.471.346-54.
         </p>
       </div>
 

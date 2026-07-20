@@ -131,6 +131,7 @@ export default async function HistoricoAtendentePage({
                       phone={lead.phone}
                       customerName={lead.customerName}
                       product={lead.product}
+                      document={lead.document}
                       templateContent={lead.usedTemplate?.content ?? fallbackTemplate?.content ?? null}
                     />
                   </td>

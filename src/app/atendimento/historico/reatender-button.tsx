@@ -8,16 +8,22 @@ export function ReatenderButton({
   phone,
   customerName,
   product,
+  document,
   templateContent,
 }: {
   phone: string;
   customerName: string;
   product: string | null;
+  document: string | null;
   templateContent: string | null;
 }) {
   function handleClick() {
     const content = templateContent ?? "Olá {{nome}}! Tudo bem?";
-    const message = fillTemplate(content, { nome: customerName, produto: product });
+    const message = fillTemplate(content, {
+      nome: customerName,
+      produto: product,
+      doc: document,
+    });
     const url = buildWhatsAppUrl(phone, message);
     window.open(url, "_blank", "noopener,noreferrer");
   }
