@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { rescueWaitingLeads } from "@/lib/distribution";
 import { notifyAdmin, EVENTS } from "@/lib/realtime";
+import { abrirSessaoOnline, fecharSessaoOnline } from "@/lib/online-time";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -23,8 +24,12 @@ export async function POST(request: NextRequest) {
     status: user.status,
   });
 
+  // Registra o tempo online: liga abre a sessão, desliga fecha.
   if (status === "ONLINE") {
+    await abrirSessaoOnline(user.id);
     await rescueWaitingLeads();
+  } else {
+    await fecharSessaoOnline(user.id);
   }
 
   return NextResponse.json({ status: user.status });

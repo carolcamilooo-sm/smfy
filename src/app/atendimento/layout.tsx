@@ -13,6 +13,8 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { Toaster } from "@/components/toaster";
 import { GlobalNoticeCard } from "@/components/global-notice-card";
 import { getGlobalNotice } from "@/lib/global-notice";
+import { OnlineTimeCard } from "@/components/online-time-card";
+import { getTempoOnline } from "@/lib/online-time";
 
 function initials(name: string) {
   return name
@@ -34,6 +36,7 @@ export default async function AtendimentoLayout({
     where: { id: session!.user.id },
     select: { status: true, notifySound: true, notifyIdleWarning: true },
   });
+  const tempoOnline = await getTempoOnline(session!.user.id);
 
   return (
     // data-theme aqui, e não no <html>: o servidor já entrega o tema escolhido
@@ -65,6 +68,9 @@ export default async function AtendimentoLayout({
           initialStatus={user.status}
           notifyIdleWarning={user.notifyIdleWarning}
         />
+        <div className="mt-3">
+          <OnlineTimeCard tempo={tempoOnline} />
+        </div>
 
         <div className="mt-auto flex flex-col gap-3">
           <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">

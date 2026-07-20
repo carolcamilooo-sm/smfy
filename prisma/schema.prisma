@@ -83,8 +83,24 @@ model User {
   productAccesses   ProductAccess[]
   messageTemplates  MessageTemplate[]
   operatorSales     OperatorSale[]
+  onlineSessions    OnlineSession[]
 
   @@map("users")
+}
+
+/// Um periodo que o atendente ficou online: abre quando entra, fecha quando
+/// sai ou fica ocioso. E daqui que sai o tempo online do dia, semana e mes —
+/// antes o sistema so sabia o status atual, sem historico.
+/// endedAt nulo = sessao ainda aberta; pra somar, conta-se ate agora.
+model OnlineSession {
+  id         String    @id @default(cuid())
+  operatorId String
+  operator   User      @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+
+  @@index([operatorId, startedAt])
+  @@map("online_sessions")
 }
 
 /// Participação de uma conta individual na distribuição. Hoje só `active`

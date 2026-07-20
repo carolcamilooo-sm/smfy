@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getEffectiveStatus, rescueWaitingLeads } from "@/lib/distribution";
+import { abrirSessaoOnline, fecharSessaoOnline } from "@/lib/online-time";
 
 export async function POST() {
   const session = await auth();
@@ -19,10 +20,18 @@ export async function POST() {
     data: { lastActivityAt: new Date() },
   });
 
-  // The operator just went from idle/offline back to active — hand them
-  // any leads that were stuck waiting because no one was eligible.
-  if (wasIdle && before.status === "ONLINE") {
-    await rescueWaitingLeads();
+  if (before.status === "ONLINE") {
+    if (wasIdle) {
+      // Voltou de ocioso: fecha a sessão que ficou aberta (o intervalo ocioso
+      // não conta como online) e abre uma nova a partir de agora.
+      await fecharSessaoOnline(session.user.id);
+      await abrirSessaoOnline(session.user.id);
+      await rescueWaitingLeads();
+    } else {
+      // Ativo e online: garante que há uma sessão aberta — cobre quem já estava
+      // online de antes da sessão passar a ser registrada.
+      await abrirSessaoOnline(session.user.id);
+    }
   }
 
   return NextResponse.json({ ok: true });
