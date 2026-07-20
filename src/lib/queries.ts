@@ -662,6 +662,101 @@ export async function getLeadsByIds(ids: string[]) {
 
 export type SalesRankingEntry = { operatorId: string; name: string; count: number };
 
+export type LeaderboardEntry = {
+  operatorId: string;
+  name: string;
+  /** Leads que caíram na fila dele no período (é o denominador da conversão). */
+  recebidos: number;
+  /** Vendas aprovadas creditadas a ele — a métrica que ordena o ranking. */
+  vendas: number;
+  receita: number;
+  /** vendas / recebidos, em %. Zero quando não recebeu nada. */
+  taxa: number;
+};
+
+/**
+ * Ranking rico do painel admin: além da contagem de vendas, traz receita e a
+ * taxa de conversão.
+ *
+ * A taxa é vendas ÷ leads recebidos, e não ÷ atendidos, de propósito: a venda é
+ * creditada a quem tinha o lead na fila (ver matchSaleToLead), então recebidos
+ * é o denominador coerente. Com "atendidos" a conta quebraria — daria acima de
+ * 100% pra quem foi creditado sem ter clicado atender, e divisão por zero pra
+ * quem vendeu sem registrar atendimento.
+ */
+export async function getSalesLeaderboard(params: DateRangeParams): Promise<{
+  range: DateRange;
+  entries: LeaderboardEntry[];
+}> {
+  const range = resolveDateRange({ period: params.period ?? "today", from: params.from, to: params.to });
+  const janela = { gte: range.from, lte: range.to };
+
+  const [operators, vendasPorOp, recebidosPorOp] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "OPERATOR", approvalStatus: "APPROVED" },
+      select: { id: true, name: true },
+    }),
+    prisma.operatorSale.groupBy({
+      by: ["operatorId"],
+      where: { createdAt: janela, paymentStatus: "APPROVED" },
+      _count: { _all: true },
+      _sum: { value: true },
+    }),
+    prisma.lead.groupBy({
+      by: ["assignedOperatorId"],
+      where: { assignedAt: janela, assignedOperatorId: { not: null } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const vendasMap = new Map(vendasPorOp.map((v) => [v.operatorId, v]));
+  const recebidosMap = new Map(
+    recebidosPorOp.map((r) => [r.assignedOperatorId as string, r._count._all])
+  );
+
+  const entries = operators
+    .map((op) => {
+      const v = vendasMap.get(op.id);
+      const vendas = v?._count._all ?? 0;
+      const recebidos = recebidosMap.get(op.id) ?? 0;
+      return {
+        operatorId: op.id,
+        name: op.name,
+        recebidos,
+        vendas,
+        receita: Number(v?._sum.value ?? 0),
+        taxa: recebidos > 0 ? Math.round((vendas / recebidos) * 100) : 0,
+      };
+    })
+    // Ordena por vendas; empate vai pra maior receita, depois nome, pra ordem
+    // ser sempre a mesma.
+    .sort((a, b) => b.vendas - a.vendas || b.receita - a.receita || a.name.localeCompare(b.name));
+
+  return { range, entries };
+}
+
+/** Vendas de um atendente no período — pra abrir ao clicar no nome dele. */
+export async function getOperatorSales(operatorId: string, params: DateRangeParams) {
+  const range = resolveDateRange({ period: params.period ?? "today", from: params.from, to: params.to });
+  const sales = await prisma.operatorSale.findMany({
+    where: {
+      operatorId,
+      paymentStatus: "APPROVED",
+      createdAt: { gte: range.from, lte: range.to },
+    },
+    include: { lead: { select: { product: true, producer: { select: { name: true } } } } },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+  return sales.map((s) => ({
+    id: s.id,
+    customerName: s.customerName ?? "Sem nome",
+    value: Number(s.value ?? 0),
+    createdAt: s.createdAt,
+    product: s.lead?.product ?? s.lead?.producer?.name ?? null,
+  }));
+}
+
 /**
  * Ranking by OperatorSale count (personal webhook conversions), not by the
  * Lead pipeline — sorted desc, ties broken by name so the order is stable.
