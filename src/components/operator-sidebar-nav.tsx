@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/atendimento", label: "Meus leads" },
-  { href: "/atendimento/mensagens", label: "Mensagens" },
+  // As mensagens vivem dentro do produto a que pertencem — /atendimento/mensagens
+  // continua existindo e manda pra cá, pra links antigos não morrerem.
+  { href: "/atendimento/produtos", label: "Meus produtos" },
   { href: "/atendimento/historico", label: "Histórico" },
   { href: "/atendimento/desempenho", label: "Meu desempenho" },
   { href: "/atendimento/ranking", label: "Ranking" },

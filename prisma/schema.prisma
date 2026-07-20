@@ -138,8 +138,9 @@ model Producer {
   active              Boolean  @default(true)
   createdAt           DateTime @default(now())
 
-  products Product[]
-  leads    Lead[]
+  products         Product[]
+  leads            Lead[]
+  messageTemplates MessageTemplate[]
 
   @@map("producers")
 }
@@ -232,9 +233,18 @@ model MessageTemplate {
   operator   User?    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 
+  /// Produtor dono da mensagem: ela só aparece nos leads dele. Nulo quer dizer
+  /// que serve pra qualquer lead — é onde ficam as mensagens antigas, criadas
+  /// antes de existir essa separação. O vínculo é pelo produtor, e não pelo
+  /// produto, porque é o produtor que vem certo em todo lead (o gateway manda
+  /// nome de oferta, que não bate com o produto cadastrado).
+  producerId String?
+  producer   Producer? @relation(fields: [producerId], references: [id], onDelete: Cascade)
+
   leads Lead[]
 
   @@index([operatorId])
+  @@index([producerId])
   @@map("message_templates")
 }
 

@@ -32,6 +32,7 @@ type QueueLead = {
   customerName: string;
   phone: string;
   product: string | null;
+  producerId: string | null;
   producer: { name: string } | null;
   value: number | null;
   gateway: string;
@@ -43,6 +44,7 @@ type Template = {
   id: string;
   title: string;
   content: string;
+  producerId: string | null;
 };
 
 function paymentTypeBadge(status: string) {
@@ -144,11 +146,20 @@ export function OperatorPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operatorId]);
 
+  // Só as mensagens daquele produto, mais as que valem pra todos. É o que
+  // impede mandar a copy de um produto no lead de outro.
+  function templatesDoLead(lead: QueueLead) {
+    return templates.filter(
+      (t) => t.producerId === null || t.producerId === lead.producerId
+    );
+  }
+
   async function handleAtender(lead: QueueLead) {
-    const templateId = selectedTemplate[lead.id] ?? templates[0]?.id;
-    const template = templates.find((t) => t.id === templateId);
+    const doLead = templatesDoLead(lead);
+    const templateId = selectedTemplate[lead.id] ?? doLead[0]?.id;
+    const template = doLead.find((t) => t.id === templateId);
     if (!template) {
-      alert("Cadastre uma mensagem em Mensagens antes de atender.");
+      alert("Cadastre uma mensagem para este produto em Meus produtos antes de atender.");
       return;
     }
 
@@ -176,7 +187,7 @@ export function OperatorPanel({
   // A extensão é quem fala com o cliente aqui — o servidor só entrega o lead
   // pra ela. Se ela não confirmar, o lead continua na fila (o erro vem da API).
   async function handleAtenderHook(lead: QueueLead) {
-    const templateId = selectedTemplate[lead.id] ?? templates[0]?.id;
+    const templateId = selectedTemplate[lead.id] ?? templatesDoLead(lead)[0]?.id;
 
     setPending(lead.id);
     try {
@@ -347,13 +358,15 @@ export function OperatorPanel({
 
                 <select
                   className="mb-3 w-full rounded-md border border-border bg-surface px-2 py-2 text-xs text-primary focus:border-accent focus:outline-none"
-                  value={selectedTemplate[lead.id] ?? templates[0]?.id ?? ""}
+                  value={selectedTemplate[lead.id] ?? templatesDoLead(lead)[0]?.id ?? ""}
                   onChange={(e) =>
                     setSelectedTemplate((prev) => ({ ...prev, [lead.id]: e.target.value }))
                   }
                 >
-                  {templates.length === 0 && <option value="">Nenhuma mensagem</option>}
-                  {templates.map((t) => (
+                  {templatesDoLead(lead).length === 0 && (
+                    <option value="">Nenhuma mensagem para este produto</option>
+                  )}
+                  {templatesDoLead(lead).map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.title}
                     </option>
@@ -363,7 +376,7 @@ export function OperatorPanel({
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     onClick={() => handleAtender(lead)}
-                    disabled={pending === lead.id || templates.length === 0}
+                    disabled={pending === lead.id || templatesDoLead(lead).length === 0}
                     className="flex-1"
                   >
                     Atender
@@ -431,13 +444,15 @@ export function OperatorPanel({
                     <td className="py-3.5 pr-2">
                       <select
                         className="w-full rounded-md border border-border bg-app px-2 py-1.5 text-xs text-primary focus:border-accent focus:outline-none"
-                        value={selectedTemplate[lead.id] ?? templates[0]?.id ?? ""}
+                        value={selectedTemplate[lead.id] ?? templatesDoLead(lead)[0]?.id ?? ""}
                         onChange={(e) =>
                           setSelectedTemplate((prev) => ({ ...prev, [lead.id]: e.target.value }))
                         }
                       >
-                        {templates.length === 0 && <option value="">Nenhuma mensagem</option>}
-                        {templates.map((t) => (
+                        {templatesDoLead(lead).length === 0 && (
+                          <option value="">Nenhuma mensagem para este produto</option>
+                        )}
+                        {templatesDoLead(lead).map((t) => (
                           <option key={t.id} value={t.id}>
                             {t.title}
                           </option>
@@ -448,7 +463,7 @@ export function OperatorPanel({
                       <div className="flex items-center gap-2.5">
                         <Button
                           onClick={() => handleAtender(lead)}
-                          disabled={pending === lead.id || templates.length === 0}
+                          disabled={pending === lead.id || templatesDoLead(lead).length === 0}
                         >
                           Atender
                         </Button>
