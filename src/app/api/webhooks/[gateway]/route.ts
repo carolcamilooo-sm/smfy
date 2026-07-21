@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { GATEWAY_ADAPTERS, GATEWAY_DB_VALUE, GATEWAY_SECRET_FIELD, isGatewayKey } from "@/lib/gateways";
-import { assignLead } from "@/lib/distribution";
+import { assignLead, categoryForPaymentStatus } from "@/lib/distribution";
 import { notifyAdmin, notifyOperator, EVENTS } from "@/lib/realtime";
 import { normalizePhone } from "@/lib/phone";
 import type { Lead } from "@/generated/prisma/client";
@@ -106,6 +106,22 @@ export async function POST(
         rawPayload,
       },
     });
+
+    // Mudou de categoria (ex: pendente virou pago) e o lead ainda não foi
+    // atendido? Redistribui pela regra da categoria nova. Sem isso, um lead
+    // que chegou pendente e caiu num atendente de pendentes ficava com ele ao
+    // virar pago — furando a trava de que venda só vai pra quem pode recebê-la.
+    // Se já foi atendido, mantém: mover geraria um segundo contato com o cliente.
+    const mudouCategoria =
+      categoryForPaymentStatus(existing.paymentStatus) !==
+      categoryForPaymentStatus(normalized.paymentStatus);
+
+    if (mudouCategoria && updated.serviceStatus !== "ATTENDED") {
+      const reassigned = await assignLead(updated);
+      await notifyAdmin(EVENTS.leadAssigned, serializeLead(reassigned));
+      return NextResponse.json({ ok: true, leadId: reassigned.id, redistribuido: true });
+    }
+
     await notifyAdmin(EVENTS.leadNew, serializeLead(updated));
     return NextResponse.json({ ok: true, leadId: updated.id });
   }
