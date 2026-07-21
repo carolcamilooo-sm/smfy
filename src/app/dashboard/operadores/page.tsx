@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getEffectiveStatus, fatiaAprovadosPorConta } from "@/lib/distribution";
+import { getAtividadeHoje } from "@/lib/team-activity";
+import { TeamActivityTable } from "@/components/team-activity-table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -100,6 +102,8 @@ export default async function OperadoresPage() {
       }),
     ]);
 
+  const atividade = await getAtividadeHoje();
+
   // Fatia esperada nas vendas: a % de cada grupo em relação às dos outros,
   // repartida entre as contas dele. Quem está em mais de um grupo soma as duas.
   // Considera todo mundo disponível, e não só quem está online agora, pra a
@@ -161,6 +165,8 @@ export default async function OperadoresPage() {
           Gerencie operadores, aprovações e a distribuição de leads.
         </p>
       </div>
+
+      <TeamActivityTable atividade={atividade} />
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-title">

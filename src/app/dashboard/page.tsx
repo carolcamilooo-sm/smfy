@@ -46,28 +46,6 @@ function serviceBadge(status: string) {
   return <Badge tone="green">Atendido</Badge>;
 }
 
-function operatorStatusDot(status: string) {
-  if (status === "ONLINE") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-success">
-        <span className="h-1.5 w-1.5 rounded-full bg-success" /> Online
-      </span>
-    );
-  }
-  if (status === "IDLE") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-warning">
-        <span className="h-1.5 w-1.5 rounded-full bg-warning" /> Ocioso
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 text-muted">
-      <span className="h-1.5 w-1.5 rounded-full bg-muted" /> Offline
-    </span>
-  );
-}
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -311,43 +289,25 @@ export default async function DashboardPage({
 
     operadores: (
       <Card>
-        <div className="mb-4 flex items-center justify-between pr-16">
-          <h2 className="text-sm font-semibold text-title">Operadores</h2>
-          <p className="text-xs">
-            <span className="font-mono text-success">{onlineCount} online</span>
-            <span className="text-secondary"> · </span>
-            <span className="font-mono text-secondary">{offlineCount} offline</span>
-          </p>
+        <h2 className="mb-4 text-sm font-semibold text-title">Operadores</h2>
+        <div className="flex items-baseline gap-4">
+          <div>
+            <p className="font-mono text-2xl font-bold text-success">{onlineCount}</p>
+            <p className="text-xs text-secondary">online agora</p>
+          </div>
+          <div>
+            <p className="font-mono text-2xl font-bold text-muted">{offlineCount}</p>
+            <p className="text-xs text-secondary">offline</p>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-xs text-secondary">
-                <th className="pb-2">Nome</th>
-                <th className="pb-2">Status</th>
-                <th className="pb-2">Recebidos</th>
-                <th className="pb-2">Atendidos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {operatorSummaries.map((op) => (
-                <tr key={op.id} className="border-t border-border">
-                  <td className="py-2 text-primary">{op.name}</td>
-                  <td className="py-2">{operatorStatusDot(op.effectiveStatus)}</td>
-                  <td className="py-2 font-mono text-secondary">{op.receivedInRange}</td>
-                  <td className="py-2 font-mono text-secondary">{op.attendedInRange}</td>
-                </tr>
-              ))}
-              {operatorSummaries.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-4 text-center text-secondary">
-                    Nenhum operador cadastrado ainda.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {/* Recebidos/atendidos por atendente saíram daqui: agora ficam num só
+            lugar, em Equipe de Atendimento → Atividade de hoje. */}
+        <Link
+          href="/dashboard/operadores"
+          className="mt-4 inline-block text-xs font-semibold text-accent hover:underline"
+        >
+          Ver atividade de cada atendente →
+        </Link>
       </Card>
     ),
   };
