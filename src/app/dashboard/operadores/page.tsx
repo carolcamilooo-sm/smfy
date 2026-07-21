@@ -278,8 +278,10 @@ export default async function OperadoresPage({
           Quem recebe o quê é decidido no botão <strong>Produtos</strong> de cada
           atendente: só recebe leads de um produtor quem estiver marcado nele.
           O rodízio e a % do grupo valem apenas entre os liberados pra aquele
-          lead. Leads recusados não passam por essa trava — vão pra todo mundo,
-          porque não existe marcação de recusados.
+          lead. Vale pra aprovado, pendente <strong>e recusado</strong>: como
+          recusado não tem caixinha própria, quem estiver marcado no produtor
+          (em Aprovados ou Pendentes) recebe também os recusados dele — quem não
+          está marcado em nada não recebe nada daquele produtor.
         </p>
         {produtoresSemTrava.length > 0 && (
           <p className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">

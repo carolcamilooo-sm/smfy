@@ -190,8 +190,11 @@ type ProductGrant = { operatorId: string; dailyLimit: number | null };
  * marcação liberava pra equipe inteira), e é o contrário mais seguro: falha
  * fechando, sem entregar venda a quem não devia ver.
  *
- * Recusado não passa por essa trava: não existe caixinha de recusados na tela,
- * então gatear por ela deixaria esses leads sem dono nenhum, pra sempre.
+ * Recusado também passa pela trava — pelo PRODUTOR. Não existe caixinha de
+ * recusados, mas quem está marcado no produtor (em Aprovados OU Pendentes) é
+ * quem recebe os recusados dele; quem não está marcado em nada não recebe nada
+ * daquele produtor, recusado incluído. Antes recusado ia pra equipe inteira, e
+ * era por aí que um operador recém-criado, sem marca nenhuma, pegava lead.
  *
  * O casamento é pelo produto quando o lead traz um, e pelo PRODUTOR quando não
  * traz. Esse segundo caso é a regra hoje: os gateways mandam nome de oferta
@@ -204,9 +207,14 @@ async function grantsForLead(
   producerId: string | null | undefined,
   category: DistributionCategory
 ): Promise<ProductGrant[] | null> {
-  if (category === "declined") return null;
-
-  const allow = category === "approved" ? { allowApproved: true } : { allowPending: true };
+  // Aprovado gateia por Aprovados, pendente por Pendentes; recusado não tem
+  // marca própria, então basta estar marcado no produtor em qualquer das duas.
+  const allow =
+    category === "approved"
+      ? { allowApproved: true }
+      : category === "pending"
+        ? { allowPending: true }
+        : { OR: [{ allowApproved: true }, { allowPending: true }] };
   const where = productId
     ? { productId, ...allow }
     : producerId
@@ -224,10 +232,11 @@ async function grantsForLead(
 
   // Pelo produtor, a mesma pessoa pode aparecer em mais de um produto dele.
   // Fica valendo o limite diário mais apertado — e "sem limite" (null) não
-  // apaga um limite que exista noutro produto.
+  // apaga um limite que exista noutro produto. Recusado não tem limite próprio.
   const byOperator = new Map<string, number | null>();
   for (const g of grants) {
-    const limit = category === "approved" ? g.dailyLimitApproved : g.dailyLimitPending;
+    const limit =
+      category === "approved" ? g.dailyLimitApproved : category === "pending" ? g.dailyLimitPending : null;
     if (!byOperator.has(g.operatorId)) {
       byOperator.set(g.operatorId, limit);
       continue;
