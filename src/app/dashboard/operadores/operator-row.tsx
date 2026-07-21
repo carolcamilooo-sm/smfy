@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
@@ -202,8 +201,6 @@ export function OperatorRow({
                             product.id,
                             access?.allowApproved,
                             access?.allowPending,
-                            access?.dailyLimitApproved,
-                            access?.dailyLimitPending,
                           ].join("|")}
                           action={updateProductAccess}
                           className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface px-3 py-2"
@@ -226,17 +223,6 @@ export function OperatorRow({
                             Aprovados
                           </label>
                           <label className="flex items-center gap-1.5 text-xs text-secondary">
-                            limite/dia
-                            <Input
-                              type="number"
-                              name="dailyLimitApproved"
-                              min={0}
-                              defaultValue={access?.dailyLimitApproved ?? ""}
-                              placeholder="-"
-                              className="w-16 py-1 font-mono text-xs"
-                            />
-                          </label>
-                          <label className="flex items-center gap-1.5 text-xs text-secondary">
                             <input
                               type="checkbox"
                               name="allowPending"
@@ -244,17 +230,6 @@ export function OperatorRow({
                               className="h-3.5 w-3.5"
                             />
                             Pendentes
-                          </label>
-                          <label className="flex items-center gap-1.5 text-xs text-secondary">
-                            limite/dia
-                            <Input
-                              type="number"
-                              name="dailyLimitPending"
-                              min={0}
-                              defaultValue={access?.dailyLimitPending ?? ""}
-                              placeholder="-"
-                              className="w-16 py-1 font-mono text-xs"
-                            />
                           </label>
                           <SubmitButton variant="secondary" className="ml-auto py-1 text-xs">
                             Salvar
@@ -271,9 +246,7 @@ export function OperatorRow({
             Aqui aparecem só os produtos que ele já recebe; para liberar um produto novo,
             marque o nome dele na aba Produtores. A marcação vale pra todos os leads do
             produtor, não só pra essa oferta — os gateways mandam o nome da oferta, que
-            muda o tempo todo, então quem manda é o produtor. Limite/dia vazio = sem
-            limite; ao bater o limite, o lead vai para outro atendente liberado, só
-            ficando em espera se ninguém mais estiver disponível.
+            muda o tempo todo, então quem manda é o produtor.
           </p>
         </div>
       )}
