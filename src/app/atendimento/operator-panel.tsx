@@ -57,9 +57,15 @@ function paymentTypeBadge(status: string) {
 }
 
 function formatWait(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}min ${String(s).padStart(2, "0")}s`;
+  // Sem segundos de propósito: o lead espera minutos ou horas, e mostrar o
+  // segundo obrigava a lista inteira a re-renderizar de 1 em 1 segundo — o que
+  // travava a tela de quem tem fila grande (centenas de leads).
+  const totalMin = Math.floor(seconds / 60);
+  if (totalMin < 1) return "menos de 1min";
+  if (totalMin < 60) return `${totalMin}min`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${String(m).padStart(2, "0")}min`;
 }
 
 export function OperatorPanel({
@@ -134,7 +140,10 @@ export function OperatorPanel({
     });
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    // 30s, não 1s: o texto "esperando há X" é em minutos, então não precisa de
+    // precisão de segundo — e re-renderizar centenas de leads a cada segundo era
+    // o que fazia a tela do operador com fila grande travar e "sumir".
+    const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
 
