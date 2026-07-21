@@ -67,9 +67,9 @@ function resumoAprovados(
 export default async function OperadoresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ atendente?: string; dia?: string }>;
+  searchParams: Promise<{ atendente?: string; dia?: string; ver?: string }>;
 }) {
-  const { atendente, dia: diaParam } = await searchParams;
+  const { atendente, dia: diaParam, ver } = await searchParams;
   const [operators, pending, rejected, deactivated, products, productAccesses, groups] =
     await Promise.all([
       prisma.user.findMany({
@@ -119,11 +119,14 @@ export default async function OperadoresPage({
   // (padrão = hoje). Busca só o do selecionado — um atendente por vez é barato.
   const hoje = brDateString(new Date());
   const dia = diaValido(diaParam);
+  const relatorioAberto = ver === "1";
   const selecionado =
     atendente && operators.some((o) => o.id === atendente)
       ? atendente
       : operators[0]?.id ?? null;
-  const relatorio = selecionado ? await getRelatorioAtendente(selecionado, dia) : null;
+  // Só consulta o banco quando o painel está aberto — fechado, nem busca.
+  const relatorio =
+    relatorioAberto && selecionado ? await getRelatorioAtendente(selecionado, dia) : null;
 
   // Fatia esperada nas vendas: a % de cada grupo em relação às dos outros,
   // repartida entre as contas dele. Quem está em mais de um grupo soma as duas.
@@ -199,6 +202,7 @@ export default async function OperadoresPage({
         selecionado={selecionado}
         dia={dia}
         hoje={hoje}
+        aberto={relatorioAberto}
         relatorio={relatorio}
         controls={
           selecionado ? (

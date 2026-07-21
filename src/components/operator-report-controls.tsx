@@ -21,7 +21,8 @@ export function OperatorReportControls({
 
   function irPara(novoDia: string) {
     if (novoDia > hoje) return;
-    const p = new URLSearchParams({ atendente, dia: novoDia });
+    // ver=1 mantém o painel aberto ao trocar de dia.
+    const p = new URLSearchParams({ ver: "1", atendente, dia: novoDia });
     router.push(`?${p.toString()}`);
   }
 

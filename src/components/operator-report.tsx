@@ -43,6 +43,7 @@ export function OperatorReport({
   selecionado,
   dia,
   hoje,
+  aberto,
   relatorio,
   controls,
 }: {
@@ -50,31 +51,54 @@ export function OperatorReport({
   selecionado: string | null;
   dia: string;
   hoje: string;
+  /** Painel expandido? Quando fechado, mostra só o botão "Verificar". */
+  aberto: boolean;
   relatorio: RelatorioAtendente | null;
   /** Seletor de data (client). Passado de fora pra este ficar server. */
   controls: React.ReactNode;
 }) {
   const naFila = relatorio ? relatorio.recebidos - relatorio.atendidos : 0;
 
+  // Links preservam aba e dia; abrir adiciona ver=1, fechar tira.
+  const alvo = selecionado ? `atendente=${selecionado}&dia=${dia}` : `dia=${dia}`;
+  const hrefAbrir = `?ver=1&${alvo}`;
+  const hrefFechar = `?${alvo}`;
+
   return (
     <Card className="overflow-hidden p-0">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-title">Relatório por atendente</h2>
-        <p className="mt-0.5 text-xs text-secondary">
-          Escolha um atendente e um dia: veja quando ficou online e cada lead que
-          recebeu, com horário. Serve de prova de quem recebeu — ou de quem não
-          ficou disponível.
-        </p>
+      <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-title">Relatório por atendente</h2>
+          <p className="mt-0.5 text-xs text-secondary">
+            {aberto
+              ? "Escolha um atendente e um dia: veja quando ficou online e cada lead que recebeu, com horário. Serve de prova de quem recebeu — ou de quem não ficou disponível."
+              : "Prova de quem recebeu lead e de quem não ficou online. Clique em Verificar para abrir."}
+          </p>
+        </div>
+        <Link
+          href={aberto ? hrefFechar : hrefAbrir}
+          scroll={false}
+          className={cn(
+            "shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+            aberto
+              ? "border-border bg-surface text-secondary hover:text-primary"
+              : "border-accent bg-accent/15 text-accent hover:bg-accent/25"
+          )}
+        >
+          {aberto ? "Fechar" : "Verificar"}
+        </Link>
       </div>
 
-      {/* Abas: uma por atendente. O dia atual é preservado ao trocar de aba. */}
+      {!aberto ? null : (
+      <>
+      {/* Abas: uma por atendente. O dia e o estado aberto são preservados. */}
       <div className="flex flex-wrap gap-1.5 border-b border-border px-4 py-3">
         {operadores.map((op) => {
           const ativo = op.id === selecionado;
           return (
             <Link
               key={op.id}
-              href={`?atendente=${op.id}&dia=${dia}`}
+              href={`?ver=1&atendente=${op.id}&dia=${dia}`}
               scroll={false}
               className={cn(
                 "rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
@@ -207,6 +231,8 @@ export function OperatorReport({
             recebeu, aqui está a hora de cada um.
           </p>
         </div>
+      )}
+      </>
       )}
     </Card>
   );
