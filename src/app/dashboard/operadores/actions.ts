@@ -4,6 +4,26 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/access";
 
+/**
+ * Ajusta o tempo de ociosidade de um atendente (minutos até ficar ocioso e
+ * offline). Limitado a uma faixa sensata: menos de 2 min derrubaria a pessoa a
+ * cada pausa curta; mais de 120 min faria alguém que largou a tela seguir
+ * recebendo lead por horas.
+ */
+export async function updateIdleTimeout(formData: FormData) {
+  await requireDashboardAccess();
+
+  const operatorId = String(formData.get("operatorId"));
+  const minutos = Math.min(120, Math.max(2, Math.round(Number(formData.get("idleTimeoutMinutes")) || 10)));
+
+  await prisma.user.update({
+    where: { id: operatorId, role: "OPERATOR" },
+    data: { idleTimeoutMinutes: minutos },
+  });
+
+  revalidatePath("/dashboard/operadores");
+}
+
 export async function approveOperator(formData: FormData) {
   await requireDashboardAccess();
 

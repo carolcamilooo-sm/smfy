@@ -34,7 +34,7 @@ export default async function AtendimentoLayout({
   const name = session?.user.name ?? "";
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: session!.user.id },
-    select: { status: true, notifySound: true, notifyIdleWarning: true },
+    select: { status: true, notifySound: true, notifyIdleWarning: true, idleTimeoutMinutes: true },
   });
   const tempoOnline = await getTempoOnline(session!.user.id);
 
@@ -67,6 +67,7 @@ export default async function AtendimentoLayout({
         <OnlineStatusCard
           initialStatus={user.status}
           notifyIdleWarning={user.notifyIdleWarning}
+          idleTimeoutMinutes={user.idleTimeoutMinutes}
         />
         <div className="mt-3">
           <OnlineTimeCard tempo={tempoOnline} />

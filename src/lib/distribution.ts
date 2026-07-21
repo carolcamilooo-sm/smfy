@@ -2,17 +2,25 @@ import { prisma } from "@/lib/db";
 import type { Lead, PaymentStatus, User } from "@/generated/prisma/client";
 import { startOfToday } from "@/lib/date-br";
 
-export const IDLE_THRESHOLD_MS = 15 * 60 * 1000;
+/** Padrão de minutos até ficar ocioso, quando o atendente não tem um próprio. */
+export const DEFAULT_IDLE_MINUTES = 10;
 
 export type EffectiveStatus = "ONLINE" | "IDLE" | "OFFLINE";
 
+/**
+ * O limite de ociosidade agora é por atendente (idleTimeoutMinutes): passado
+ * esse tempo sem atividade, ele deixa de contar como online — para de receber
+ * lead. Quem não tem valor próprio usa o padrão.
+ */
 export function getEffectiveStatus(user: {
   status: "ONLINE" | "OFFLINE";
   lastActivityAt: Date;
+  idleTimeoutMinutes?: number | null;
 }): EffectiveStatus {
   if (user.status === "OFFLINE") return "OFFLINE";
+  const limiteMs = (user.idleTimeoutMinutes ?? DEFAULT_IDLE_MINUTES) * 60 * 1000;
   const idleFor = Date.now() - user.lastActivityAt.getTime();
-  return idleFor < IDLE_THRESHOLD_MS ? "ONLINE" : "IDLE";
+  return idleFor < limiteMs ? "ONLINE" : "IDLE";
 }
 
 export type DistributionCategory = "approved" | "pending" | "declined";

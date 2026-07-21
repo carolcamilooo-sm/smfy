@@ -15,10 +15,12 @@ import {
   removeOperator,
   reactivateOperator,
   updateDistribution,
+  updateIdleTimeout,
   createGroup,
   updateGroup,
   removeGroup,
 } from "./actions";
+import { IdleTimeoutCard } from "@/components/idle-timeout-card";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +124,11 @@ export default async function OperadoresPage() {
     memberIds: g.members.map((m) => m.id),
   }));
   const operatorsForGroups = operators.map((op) => ({ id: op.id, name: op.name }));
+  const operatorsIdle = operators.map((op) => ({
+    id: op.id,
+    name: op.name,
+    idleTimeoutMinutes: op.idleTimeoutMinutes,
+  }));
 
   type ProductForUi = { id: string; name: string; active: boolean };
   const productGroups = Array.from(
@@ -167,6 +174,8 @@ export default async function OperadoresPage() {
       </div>
 
       <TeamActivityTable atividade={atividade} />
+
+      <IdleTimeoutCard operadores={operatorsIdle} salvar={updateIdleTimeout} />
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-title">

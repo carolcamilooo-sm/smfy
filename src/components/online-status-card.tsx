@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const IDLE_LIMIT_SECONDS = 10 * 60;
 const IDLE_WARNING_AT_SECONDS = 60;
 const HEARTBEAT_INTERVAL_MS = 60 * 1000;
 const ACTIVITY_EVENTS = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
@@ -12,10 +11,14 @@ const ACTIVITY_EVENTS = ["mousemove", "keydown", "click", "scroll", "touchstart"
 export function OnlineStatusCard({
   initialStatus,
   notifyIdleWarning,
+  idleTimeoutMinutes,
 }: {
   initialStatus: "ONLINE" | "OFFLINE";
   notifyIdleWarning: boolean;
+  idleTimeoutMinutes: number;
 }) {
+  // O limite vem do que o admin configurou pra esta conta, e não mais fixo.
+  const IDLE_LIMIT_SECONDS = idleTimeoutMinutes * 60;
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
   const [secondsIdle, setSecondsIdle] = useState(0);
@@ -127,7 +130,7 @@ export function OnlineStatusCard({
       </button>
       <p className="mt-2.5 text-[11px] leading-relaxed text-muted">
         Você só recebe novos leads enquanto estiver online. Fica inativo
-        automaticamente após 10 min sem uso.
+        automaticamente após {idleTimeoutMinutes} min sem uso.
       </p>
       {showIdleWarning && (
         <p className="mt-2 text-[11px] leading-relaxed text-warning">

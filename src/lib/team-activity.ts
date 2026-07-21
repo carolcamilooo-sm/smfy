@@ -29,7 +29,7 @@ export async function getAtividadeHoje(): Promise<AtividadeAtendente[]> {
   const [operadores, recebidosGrp, atendidosGrp, sessoes] = await Promise.all([
     prisma.user.findMany({
       where: { role: "OPERATOR", approvalStatus: "APPROVED", active: true },
-      select: { id: true, name: true, status: true, lastActivityAt: true },
+      select: { id: true, name: true, status: true, lastActivityAt: true, idleTimeoutMinutes: true },
       orderBy: { name: "asc" },
     }),
     prisma.lead.groupBy({

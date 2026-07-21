@@ -70,6 +70,10 @@ model User {
   dashboardLayout String[]        @default([])
   dashboardBlockWidths Json       @default("{}")
   lastActivityAt DateTime         @default(now())
+  // Minutos sem atividade ate o atendente ficar ocioso (para de receber lead) e
+  // ser posto offline pelo navegador. Ajustavel por pessoa: quem tem um ritmo
+  // que exige pausas maiores pode ganhar uma folga.
+  idleTimeoutMinutes Int          @default(10)
   createdAt      DateTime         @default(now())
 
   // Grupos de atendimento de que a conta participa. É muitos-pra-muitos: a
