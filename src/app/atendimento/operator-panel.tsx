@@ -17,6 +17,7 @@ import { CopyButton } from "@/components/copy-button";
 import { fillTemplate } from "@/lib/template";
 import { buildWhatsAppUrl } from "@/lib/phone";
 import { getPusherClient } from "@/lib/pusher-client";
+import { useThrottledRefresh } from "@/lib/use-throttled-refresh";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
 import { brDateString, shiftDateString, startOfDayString } from "@/lib/date-br";
 
@@ -77,6 +78,9 @@ export function OperatorPanel({
   hasAttendWebhook: boolean;
 }) {
   const router = useRouter();
+  // Refresh da fila com teto: um operador movimentado recebe leads em rajada, e
+  // o toast já avisa na hora, então não precisa re-rodar a página a cada um.
+  const refreshFila = useThrottledRefresh(6000);
   const [selectedTemplate, setSelectedTemplate] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -138,14 +142,14 @@ export function OperatorPanel({
     const pusher = getPusherClient();
     const channel = CHANNELS.operator(operatorId);
     const sub = pusher.subscribe(channel);
-    const handler = () => router.refresh();
+    const handler = () => refreshFila();
     sub.bind(EVENTS.leadAssigned, handler);
     return () => {
       sub.unbind(EVENTS.leadAssigned, handler);
       pusher.unsubscribe(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operatorId]);
+  }, [operatorId, refreshFila]);
 
   // Só as mensagens daquele produto, mais as que valem pra todos. É o que
   // impede mandar a copy de um produto no lead de outro.
