@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/db";
 import { getEffectiveStatus, fatiaAprovadosPorConta } from "@/lib/distribution";
 import { getAtividadeHoje } from "@/lib/team-activity";
+import { getRelatorioAtendente, diaValido } from "@/lib/operator-report";
+import { brDateString } from "@/lib/date-br";
 import { TeamActivityTable } from "@/components/team-activity-table";
+import { OperatorReport } from "@/components/operator-report";
+import { OperatorReportControls } from "@/components/operator-report-controls";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,7 +64,12 @@ function resumoAprovados(
   );
 }
 
-export default async function OperadoresPage() {
+export default async function OperadoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ atendente?: string; dia?: string }>;
+}) {
+  const { atendente, dia: diaParam } = await searchParams;
   const [operators, pending, rejected, deactivated, products, productAccesses, groups] =
     await Promise.all([
       prisma.user.findMany({
@@ -105,6 +114,16 @@ export default async function OperadoresPage() {
     ]);
 
   const atividade = await getAtividadeHoje();
+
+  // Relatório por atendente: aba selecionada (padrão = 1º da lista) e dia
+  // (padrão = hoje). Busca só o do selecionado — um atendente por vez é barato.
+  const hoje = brDateString(new Date());
+  const dia = diaValido(diaParam);
+  const selecionado =
+    atendente && operators.some((o) => o.id === atendente)
+      ? atendente
+      : operators[0]?.id ?? null;
+  const relatorio = selecionado ? await getRelatorioAtendente(selecionado, dia) : null;
 
   // Fatia esperada nas vendas: a % de cada grupo em relação às dos outros,
   // repartida entre as contas dele. Quem está em mais de um grupo soma as duas.
@@ -174,6 +193,19 @@ export default async function OperadoresPage() {
       </div>
 
       <TeamActivityTable atividade={atividade} />
+
+      <OperatorReport
+        operadores={operatorsForGroups}
+        selecionado={selecionado}
+        dia={dia}
+        hoje={hoje}
+        relatorio={relatorio}
+        controls={
+          selecionado ? (
+            <OperatorReportControls atendente={selecionado} dia={dia} hoje={hoje} />
+          ) : null
+        }
+      />
 
       <IdleTimeoutCard operadores={operatorsIdle} salvar={updateIdleTimeout} />
 
