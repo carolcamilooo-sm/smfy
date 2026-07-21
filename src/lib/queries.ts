@@ -684,6 +684,36 @@ export type LeaderboardEntry = {
  * 100% pra quem foi creditado sem ter clicado atender, e divisão por zero pra
  * quem vendeu sem registrar atendimento.
  */
+function soDigitos(v: unknown): string {
+  return String(v ?? "").replace(/\D/g, "");
+}
+
+/**
+ * Identidade do comprador, pra não contar recompra/upsell do mesmo cliente como
+ * várias vendas. CPF, senão telefone, senão e-mail; sem nada disso, cada venda
+ * conta sozinha (chave = a própria transação, que nunca funde clientes).
+ */
+function chaveComprador(rawPayload: unknown, externalId: string): string {
+  const c = (rawPayload as { data?: { customer?: Record<string, unknown> } })?.data?.customer ?? {};
+  const doc = soDigitos(c.document);
+  if (doc.length >= 11) return `doc:${doc}`;
+  const tel = soDigitos(c.phone);
+  if (tel.length >= 10) return `tel:${tel}`;
+  const mail = String(c.email ?? "").trim().toLowerCase();
+  if (mail) return `mail:${mail}`;
+  return `tx:${externalId}`;
+}
+
+/**
+ * Uma "venda" no ranking = um comprador num dia. Recompra e upsell do mesmo CPF
+ * no mesmo dia são a mesma venda — é assim que o painel do gateway conta, e sem
+ * isso um funil de 3 ofertas virava 3 vendas. A RECEITA, ao contrário, soma
+ * todos os pagamentos: o dinheiro entrou três vezes.
+ */
+function unidadeVenda(s: { createdAt: Date; rawPayload: unknown; externalId: string }): string {
+  return `${chaveComprador(s.rawPayload, s.externalId)}|${brDateString(s.createdAt)}`;
+}
+
 export async function getSalesLeaderboard(params: DateRangeParams): Promise<{
   range: DateRange;
   entries: LeaderboardEntry[];
@@ -691,16 +721,16 @@ export async function getSalesLeaderboard(params: DateRangeParams): Promise<{
   const range = resolveDateRange({ period: params.period ?? "today", from: params.from, to: params.to });
   const janela = { gte: range.from, lte: range.to };
 
-  const [operators, vendasPorOp, recebidosPorOp] = await Promise.all([
+  const [operators, vendasRaw, recebidosPorOp] = await Promise.all([
     prisma.user.findMany({
       where: { role: "OPERATOR", approvalStatus: "APPROVED" },
       select: { id: true, name: true },
     }),
-    prisma.operatorSale.groupBy({
-      by: ["operatorId"],
+    // Carrega as vendas cruas pra deduplicar comprador/dia em memória — o
+    // groupBy do banco não sabe agrupar por CPF (que mora no rawPayload).
+    prisma.operatorSale.findMany({
       where: { createdAt: janela, paymentStatus: "APPROVED" },
-      _count: { _all: true },
-      _sum: { value: true },
+      select: { operatorId: true, value: true, createdAt: true, externalId: true, rawPayload: true },
     }),
     prisma.lead.groupBy({
       by: ["assignedOperatorId"],
@@ -709,22 +739,29 @@ export async function getSalesLeaderboard(params: DateRangeParams): Promise<{
     }),
   ]);
 
-  const vendasMap = new Map(vendasPorOp.map((v) => [v.operatorId, v]));
+  // Por atendente: conjunto de vendas únicas (comprador+dia) e soma de receita.
+  const vendasSet = new Map<string, Set<string>>();
+  const receitaMap = new Map<string, number>();
+  for (const s of vendasRaw) {
+    let set = vendasSet.get(s.operatorId);
+    if (!set) vendasSet.set(s.operatorId, (set = new Set()));
+    set.add(unidadeVenda(s));
+    receitaMap.set(s.operatorId, (receitaMap.get(s.operatorId) ?? 0) + Number(s.value ?? 0));
+  }
   const recebidosMap = new Map(
     recebidosPorOp.map((r) => [r.assignedOperatorId as string, r._count._all])
   );
 
   const entries = operators
     .map((op) => {
-      const v = vendasMap.get(op.id);
-      const vendas = v?._count._all ?? 0;
+      const vendas = vendasSet.get(op.id)?.size ?? 0;
       const recebidos = recebidosMap.get(op.id) ?? 0;
       return {
         operatorId: op.id,
         name: op.name,
         recebidos,
         vendas,
-        receita: Number(v?._sum.value ?? 0),
+        receita: receitaMap.get(op.id) ?? 0,
         taxa: recebidos > 0 ? Math.round((vendas / recebidos) * 100) : 0,
       };
     })
@@ -744,17 +781,46 @@ export async function getOperatorSales(operatorId: string, params: DateRangePara
       paymentStatus: "APPROVED",
       createdAt: { gte: range.from, lte: range.to },
     },
-    include: { lead: { select: { product: true, producer: { select: { name: true } } } } },
+    select: {
+      value: true,
+      customerName: true,
+      createdAt: true,
+      externalId: true,
+      rawPayload: true,
+      lead: { select: { product: true, producer: { select: { name: true } } } },
+    },
     orderBy: { createdAt: "desc" },
-    take: 200,
+    take: 1000,
   });
-  return sales.map((s) => ({
-    id: s.id,
-    customerName: s.customerName ?? "Sem nome",
-    value: Number(s.value ?? 0),
-    createdAt: s.createdAt,
-    product: s.lead?.product ?? s.lead?.producer?.name ?? null,
-  }));
+
+  // Agrupa por comprador/dia, igual à contagem do ranking: recompra e upsell do
+  // mesmo cliente no dia viram uma linha só. O valor soma os pagamentos, e
+  // `pagamentos` diz quantos foram — pra você ver o funil sem inflar a conta.
+  const unidades = new Map<
+    string,
+    { id: string; customerName: string; value: number; createdAt: Date; product: string | null; pagamentos: number }
+  >();
+  for (const s of sales) {
+    const chave = unidadeVenda(s);
+    const prod = s.lead?.product ?? s.lead?.producer?.name ?? null;
+    const existente = unidades.get(chave);
+    if (!existente) {
+      // orderBy desc: o primeiro visto é o pagamento mais recente do dia.
+      unidades.set(chave, {
+        id: chave,
+        customerName: s.customerName ?? "Sem nome",
+        value: Number(s.value ?? 0),
+        createdAt: s.createdAt,
+        product: prod,
+        pagamentos: 1,
+      });
+    } else {
+      existente.value += Number(s.value ?? 0);
+      existente.pagamentos += 1;
+      existente.product = `${existente.pagamentos} ofertas`;
+    }
+  }
+  return [...unidades.values()];
 }
 
 /**
@@ -767,21 +833,26 @@ export async function getSalesRanking(params: DateRangeParams): Promise<{
 }> {
   const range = resolveDateRange({ period: params.period ?? "today", from: params.from, to: params.to });
 
-  const [operators, counts] = await Promise.all([
+  const [operators, vendasRaw] = await Promise.all([
     prisma.user.findMany({
       where: { role: "OPERATOR", approvalStatus: "APPROVED" },
       select: { id: true, name: true },
     }),
-    prisma.operatorSale.groupBy({
-      by: ["operatorId"],
+    prisma.operatorSale.findMany({
       where: { createdAt: { gte: range.from, lte: range.to }, paymentStatus: "APPROVED" },
-      _count: { _all: true },
+      select: { operatorId: true, createdAt: true, externalId: true, rawPayload: true },
     }),
   ]);
 
-  const countMap = new Map(counts.map((c) => [c.operatorId, c._count._all]));
+  // Mesma regra do leaderboard: uma venda = um comprador num dia.
+  const setMap = new Map<string, Set<string>>();
+  for (const s of vendasRaw) {
+    let set = setMap.get(s.operatorId);
+    if (!set) setMap.set(s.operatorId, (set = new Set()));
+    set.add(unidadeVenda(s));
+  }
   const ranking = operators
-    .map((op) => ({ operatorId: op.id, name: op.name, count: countMap.get(op.id) ?? 0 }))
+    .map((op) => ({ operatorId: op.id, name: op.name, count: setMap.get(op.id)?.size ?? 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   return { range, ranking };

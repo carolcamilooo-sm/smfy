@@ -300,7 +300,10 @@ export default async function RankingPage({
       <p className="text-xs text-muted">
         Conversão = vendas divididas pelos leads recebidos no período. A venda é creditada a
         quem tinha o lead na fila, então quem recebe muito lead de uma vez (uma
-        importação, por exemplo) aparece mais alto por alguns dias.
+        importação, por exemplo) aparece mais alto por alguns dias. Cada venda é
+        um cliente por dia — se o mesmo cliente paga várias ofertas no mesmo dia
+        (upsell), conta como uma venda (igual ao painel do gateway); já a receita
+        soma todos os pagamentos.
       </p>
     </div>
   );
