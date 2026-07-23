@@ -714,6 +714,52 @@ function unidadeVenda(s: { createdAt: Date; rawPayload: unknown; externalId: str
   return `${chaveComprador(s.rawPayload, s.externalId)}|${brDateString(s.createdAt)}`;
 }
 
+/**
+ * Vendas (deduplicadas por comprador/dia) e receita, por atendente, feitas
+ * DENTRO do Postgres — em vez de trazer o rawPayload de todas as vendas pra
+ * deduplicar no Node (que era pesado e carregava JSON grande à toa).
+ *
+ * A chave do comprador e o corte por dia são idênticos ao chaveComprador /
+ * brDateString do lado JS (conferido: mesmos números pra todos os atendentes):
+ * - dia = createdAt menos 3h (Brasília é UTC-3 fixo, e a coluna é timestamp
+ *   sem fuso; subtrair 3h reproduz o brDateString exatamente).
+ * - chave = CPF (>=11 díg.), senão telefone (>=10), senão e-mail, senão a
+ *   transação (cada uma conta sozinha).
+ * A receita continua somando TODOS os pagamentos.
+ */
+async function vendasDedupPorOperador(
+  from: Date,
+  to: Date
+): Promise<Map<string, { vendas: number; receita: number }>> {
+  const rows = await prisma.$queryRaw<
+    { operatorId: string; vendas: bigint; receita: Prisma.Decimal | null }[]
+  >`
+    WITH base AS (
+      SELECT "operatorId", "value",
+        to_char("createdAt" - interval '3 hours', 'YYYY-MM-DD') AS dia,
+        CASE
+          WHEN length(regexp_replace(coalesce("rawPayload"->'data'->'customer'->>'document',''),'\\D','','g')) >= 11
+            THEN 'doc:'||regexp_replace(coalesce("rawPayload"->'data'->'customer'->>'document',''),'\\D','','g')
+          WHEN length(regexp_replace(coalesce("rawPayload"->'data'->'customer'->>'phone',''),'\\D','','g')) >= 10
+            THEN 'tel:'||regexp_replace(coalesce("rawPayload"->'data'->'customer'->>'phone',''),'\\D','','g')
+          WHEN length(trim(lower(coalesce("rawPayload"->'data'->'customer'->>'email','')))) > 0
+            THEN 'mail:'||trim(lower(coalesce("rawPayload"->'data'->'customer'->>'email','')))
+          ELSE 'tx:'||"externalId"
+        END AS ckey
+      FROM operator_sales
+      WHERE "paymentStatus"::text = 'APPROVED' AND "createdAt" >= ${from} AND "createdAt" <= ${to}
+    )
+    SELECT "operatorId",
+           count(DISTINCT (ckey || '|' || dia))::bigint AS vendas,
+           sum("value") AS receita
+    FROM base
+    GROUP BY "operatorId"`;
+
+  const m = new Map<string, { vendas: number; receita: number }>();
+  for (const r of rows) m.set(r.operatorId, { vendas: Number(r.vendas), receita: Number(r.receita ?? 0) });
+  return m;
+}
+
 export async function getSalesLeaderboard(params: DateRangeParams): Promise<{
   range: DateRange;
   entries: LeaderboardEntry[];
@@ -721,17 +767,12 @@ export async function getSalesLeaderboard(params: DateRangeParams): Promise<{
   const range = resolveDateRange({ period: params.period ?? "today", from: params.from, to: params.to });
   const janela = { gte: range.from, lte: range.to };
 
-  const [operators, vendasRaw, recebidosPorOp] = await Promise.all([
+  const [operators, vendasMap, recebidosPorOp] = await Promise.all([
     prisma.user.findMany({
       where: { role: "OPERATOR", approvalStatus: "APPROVED" },
       select: { id: true, name: true },
     }),
-    // Carrega as vendas cruas pra deduplicar comprador/dia em memória — o
-    // groupBy do banco não sabe agrupar por CPF (que mora no rawPayload).
-    prisma.operatorSale.findMany({
-      where: { createdAt: janela, paymentStatus: "APPROVED" },
-      select: { operatorId: true, value: true, createdAt: true, externalId: true, rawPayload: true },
-    }),
+    vendasDedupPorOperador(range.from, range.to),
     prisma.lead.groupBy({
       by: ["assignedOperatorId"],
       where: { assignedAt: janela, assignedOperatorId: { not: null } },
@@ -739,29 +780,21 @@ export async function getSalesLeaderboard(params: DateRangeParams): Promise<{
     }),
   ]);
 
-  // Por atendente: conjunto de vendas únicas (comprador+dia) e soma de receita.
-  const vendasSet = new Map<string, Set<string>>();
-  const receitaMap = new Map<string, number>();
-  for (const s of vendasRaw) {
-    let set = vendasSet.get(s.operatorId);
-    if (!set) vendasSet.set(s.operatorId, (set = new Set()));
-    set.add(unidadeVenda(s));
-    receitaMap.set(s.operatorId, (receitaMap.get(s.operatorId) ?? 0) + Number(s.value ?? 0));
-  }
   const recebidosMap = new Map(
     recebidosPorOp.map((r) => [r.assignedOperatorId as string, r._count._all])
   );
 
   const entries = operators
     .map((op) => {
-      const vendas = vendasSet.get(op.id)?.size ?? 0;
+      const v = vendasMap.get(op.id);
+      const vendas = v?.vendas ?? 0;
       const recebidos = recebidosMap.get(op.id) ?? 0;
       return {
         operatorId: op.id,
         name: op.name,
         recebidos,
         vendas,
-        receita: receitaMap.get(op.id) ?? 0,
+        receita: v?.receita ?? 0,
         taxa: recebidos > 0 ? Math.round((vendas / recebidos) * 100) : 0,
       };
     })
@@ -833,26 +866,17 @@ export async function getSalesRanking(params: DateRangeParams): Promise<{
 }> {
   const range = resolveDateRange({ period: params.period ?? "today", from: params.from, to: params.to });
 
-  const [operators, vendasRaw] = await Promise.all([
+  const [operators, vendasMap] = await Promise.all([
     prisma.user.findMany({
       where: { role: "OPERATOR", approvalStatus: "APPROVED" },
       select: { id: true, name: true },
     }),
-    prisma.operatorSale.findMany({
-      where: { createdAt: { gte: range.from, lte: range.to }, paymentStatus: "APPROVED" },
-      select: { operatorId: true, createdAt: true, externalId: true, rawPayload: true },
-    }),
+    // Mesma regra e mesma agregação do leaderboard: uma venda = um comprador num dia.
+    vendasDedupPorOperador(range.from, range.to),
   ]);
 
-  // Mesma regra do leaderboard: uma venda = um comprador num dia.
-  const setMap = new Map<string, Set<string>>();
-  for (const s of vendasRaw) {
-    let set = setMap.get(s.operatorId);
-    if (!set) setMap.set(s.operatorId, (set = new Set()));
-    set.add(unidadeVenda(s));
-  }
   const ranking = operators
-    .map((op) => ({ operatorId: op.id, name: op.name, count: setMap.get(op.id)?.size ?? 0 }))
+    .map((op) => ({ operatorId: op.id, name: op.name, count: vendasMap.get(op.id)?.vendas ?? 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   return { range, ranking };
