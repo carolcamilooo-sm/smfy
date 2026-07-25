@@ -20,7 +20,7 @@ import { buildWhatsAppUrl } from "@/lib/phone";
 import { getPusherClient } from "@/lib/pusher-client";
 import { useThrottledRefresh } from "@/lib/use-throttled-refresh";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
-import { brDateString, shiftDateString, startOfDayString } from "@/lib/date-br";
+import { brDateString, shiftDateString, startOfDayString, BR_TIMEZONE } from "@/lib/date-br";
 
 const PAYMENT_OPTIONS = [
   { value: "APPROVED", label: "Pago" },
@@ -41,6 +41,7 @@ type QueueLead = {
   gateway: string;
   paymentStatus: string;
   assignedAt: string | Date | null;
+  createdAt: string | Date;
 };
 
 type Template = {
@@ -55,6 +56,19 @@ function paymentTypeBadge(status: string) {
   if (status === "PENDING") return <Badge tone="yellow">Pendente</Badge>;
   if (status === "DECLINED") return <Badge tone="red">Recusado</Badge>;
   return <Badge tone="gray">Outro</Badge>;
+}
+
+/** Hora que o lead chegou na SMFY. Só HH:MM no mesmo dia; DD/MM HH:MM se for de outro dia. */
+function formatChegada(d: string | Date) {
+  const date = new Date(d);
+  const hhmm = date.toLocaleTimeString("pt-BR", {
+    timeZone: BR_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  if (brDateString(date) === brDateString(new Date())) return hhmm;
+  const [, m, dia] = brDateString(date).split("-");
+  return `${dia}/${m} ${hhmm}`;
 }
 
 function formatWait(seconds: number) {
@@ -415,6 +429,9 @@ export function OperatorPanel({
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <span className="font-mono text-xs font-semibold text-warning">
                     esperando há {formatWait(waitSeconds)}
+                    <span className="ml-1.5 font-normal text-muted">
+                      · chegou {formatChegada(lead.createdAt)}
+                    </span>
                   </span>
                   {lead.value != null && (
                     <span
@@ -519,6 +536,9 @@ export function OperatorPanel({
                     <td className="py-3.5 pr-2">{paymentTypeBadge(lead.paymentStatus)}</td>
                     <td className="py-3.5 pr-2 font-mono text-xs font-semibold text-warning">
                       {formatWait(waitSeconds)}
+                      <span className="block font-normal text-muted">
+                        chegou {formatChegada(lead.createdAt)}
+                      </span>
                     </td>
                     <td className="py-3.5 pr-2">
                       <Badge tone="red">Sem atendimento</Badge>
