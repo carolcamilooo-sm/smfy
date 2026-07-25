@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CopyButton } from "@/components/copy-button";
 import { fillTemplate } from "@/lib/template";
+import { fmtBRL } from "@/lib/utils";
 import { buildWhatsAppUrl } from "@/lib/phone";
 import { getPusherClient } from "@/lib/pusher-client";
 import { useThrottledRefresh } from "@/lib/use-throttled-refresh";
@@ -411,9 +412,19 @@ export function OperatorPanel({
                     ? `${lead.product} — ${lead.producer?.name ?? "-"}`
                     : lead.producer?.name ?? "-"}
                 </p>
-                <p className="mb-3 font-mono text-xs font-semibold text-warning">
-                  esperando há {formatWait(waitSeconds)}
-                </p>
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-semibold text-warning">
+                    esperando há {formatWait(waitSeconds)}
+                  </span>
+                  {lead.value != null && (
+                    <span
+                      className="font-mono text-sm font-bold text-success"
+                      title="Valor do ticket que o cliente comprou"
+                    >
+                      {fmtBRL(lead.value)}
+                    </span>
+                  )}
+                </div>
 
                 <select
                   className="mb-3 w-full rounded-md border border-border bg-surface px-2 py-2 text-xs text-primary focus:border-accent focus:outline-none"
@@ -482,6 +493,7 @@ export function OperatorPanel({
               <tr className="border-b border-border text-xs text-secondary">
                 <th className="pb-2.5">Nome</th>
                 <th className="pb-2.5">Produto</th>
+                <th className="pb-2.5">Valor</th>
                 <th className="pb-2.5">Tipo</th>
                 <th className="pb-2.5">Esperando há</th>
                 <th className="pb-2.5">Status</th>
@@ -500,6 +512,9 @@ export function OperatorPanel({
                     </td>
                     <td className="py-3.5 pr-2 font-semibold text-accent">
                       {lead.product ? `${lead.product} — ${lead.producer?.name ?? "-"}` : lead.producer?.name ?? "-"}
+                    </td>
+                    <td className="py-3.5 pr-2 font-mono font-bold text-success">
+                      {lead.value != null ? fmtBRL(lead.value) : "—"}
                     </td>
                     <td className="py-3.5 pr-2">{paymentTypeBadge(lead.paymentStatus)}</td>
                     <td className="py-3.5 pr-2 font-mono text-xs font-semibold text-warning">

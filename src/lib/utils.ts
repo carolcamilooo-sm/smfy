@@ -13,3 +13,8 @@ export function fmtShare(value: number) {
   const rounded = Math.round(value * 10) / 10;
   return `${String(rounded).replace(".", ",")}%`;
 }
+
+/** Valor do ticket em reais: 47 -> "R$ 47,00". */
+export function fmtBRL(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}

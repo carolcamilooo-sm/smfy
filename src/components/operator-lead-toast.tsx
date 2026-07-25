@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
 import { playBeep } from "@/lib/beep";
+import { fmtBRL } from "@/lib/utils";
 
 type LeadEventPayload = {
   id: string;
   customerName: string;
+  value?: number | null;
 };
 
 const AUTO_DISMISS_MS = 6000;
@@ -52,6 +54,9 @@ export function OperatorLeadToast({
       <div>
         <p className="text-sm font-semibold text-primary">
           Novo lead atribuído a você
+          {toast.value != null && (
+            <span className="ml-2 font-mono text-success">{fmtBRL(toast.value)}</span>
+          )}
         </p>
         <p className="text-xs text-secondary">{toast.customerName} · via WhatsApp · agora</p>
       </div>

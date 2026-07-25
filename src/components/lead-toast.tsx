@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
+import { fmtBRL } from "@/lib/utils";
 
 type LeadEventPayload = {
   id: string;
   customerName: string;
+  value?: number | null;
   assignedOperator?: { name: string } | null;
 };
 
@@ -45,6 +47,9 @@ export function LeadToast() {
       <div>
         <p className="text-sm font-medium text-primary">
           Novo lead recebido
+          {toast.value != null && (
+            <span className="ml-2 font-mono text-success">{fmtBRL(toast.value)}</span>
+          )}
         </p>
         <p className="text-xs text-secondary">
           {toast.assignedOperator

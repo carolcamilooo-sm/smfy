@@ -12,7 +12,7 @@ import { LeadVolumeChart } from "@/components/lead-volume-chart";
 import { DashboardSortable } from "@/components/dashboard-sortable";
 import { CHANNELS, EVENTS } from "@/lib/realtime";
 import { BR_TIMEZONE } from "@/lib/date-br";
-import { fmtShare } from "@/lib/utils";
+import { fmtShare, fmtBRL } from "@/lib/utils";
 import { normalizeDashboardLayout, normalizeDashboardWidths, type DashboardBlockKey } from "@/lib/dashboard-layout";
 import { updateDashboardLayout, updateDashboardBlockWidth } from "./actions";
 
@@ -249,6 +249,7 @@ export default async function DashboardPage({
                 <th className="pb-2">Produtor</th>
                 <th className="pb-2">Gateway</th>
                 <th className="pb-2">Produto</th>
+                <th className="pb-2">Valor</th>
                 <th className="pb-2">Pagamento</th>
                 <th className="pb-2">Atendimento</th>
                 <th className="pb-2">Operador</th>
@@ -264,6 +265,9 @@ export default async function DashboardPage({
                   </td>
                   <td className="py-2 text-secondary">{lead.gateway}</td>
                   <td className="py-2 text-secondary">{lead.product ?? "-"}</td>
+                  <td className="py-2 font-mono font-semibold text-success">
+                    {lead.value != null ? fmtBRL(lead.value) : "—"}
+                  </td>
                   <td className="py-2">{paymentBadge(lead.paymentStatus)}</td>
                   <td className="py-2">{serviceBadge(lead.serviceStatus)}</td>
                   <td className="py-2 text-secondary">
@@ -276,7 +280,7 @@ export default async function DashboardPage({
               ))}
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-4 text-center text-secondary">
+                  <td colSpan={9} className="py-4 text-center text-secondary">
                     Nenhum lead recebido ainda.
                   </td>
                 </tr>
