@@ -141,6 +141,17 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
     await Promise.all([
       prisma.lead.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
+        // Só os campos que os agregados abaixo leem. Sem `select`, isto trazia
+        // a linha inteira — inclusive o rawPayload (o JSON cru do webhook) — de
+        // milhares de leads a cada carga do painel, saturando o banco. Nenhum
+        // desses campos pesados é usado aqui.
+        select: {
+          producerId: true,
+          paymentStatus: true,
+          serviceStatus: true,
+          assignedOperatorId: true,
+          createdAt: true,
+        },
       }),
       prisma.user.findMany({
         where: { role: "OPERATOR" },
