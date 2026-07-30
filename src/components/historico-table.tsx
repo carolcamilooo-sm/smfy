@@ -47,7 +47,13 @@ type Lead = {
   createdAt: Date | string;
 };
 
-export function HistoricoTable({ leads }: { leads: Lead[] }) {
+export function HistoricoTable({
+  leads,
+  redistribuir,
+}: {
+  leads: Lead[];
+  redistribuir: (formData: FormData) => Promise<void>;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const allSelected = leads.length > 0 && selected.size === leads.length;
@@ -72,10 +78,23 @@ export function HistoricoTable({ leads }: { leads: Lead[] }) {
           <span className="text-primary">
             <span className="font-mono font-semibold">{selected.size}</span> selecionado(s)
           </span>
-          <a
-            href={`/api/leads/export?ids=${Array.from(selected).join(",")}`}
+          <form
+            action={redistribuir}
             className="ml-auto"
+            onSubmit={(e) => {
+              if (
+                !confirm(
+                  `Redistribuir ${selected.size} lead(s) como remarketing? Eles voltam pra fila dos atendentes (respeitando quem está online e a trava de acesso) e aparecem marcados como REMARKETING no lugar da hora de chegada.`
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
           >
+            <input type="hidden" name="ids" value={Array.from(selected).join(",")} />
+            <Button type="submit">Redistribuir (remarketing)</Button>
+          </form>
+          <a href={`/api/leads/export?ids=${Array.from(selected).join(",")}`}>
             <Button type="button" variant="secondary">
               Baixar selecionados
             </Button>

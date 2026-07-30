@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { HistoricoTable } from "@/components/historico-table";
+import { redistribuirRemarketing } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -253,7 +254,7 @@ export default async function HistoricoPage({
         </Button>
       </form>
 
-      <HistoricoTable leads={leads} />
+      <HistoricoTable leads={leads} redistribuir={redistribuirRemarketing} />
 
       <div className="flex items-center justify-between text-xs text-secondary">
         <div>

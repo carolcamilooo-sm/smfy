@@ -42,6 +42,7 @@ type QueueLead = {
   paymentStatus: string;
   assignedAt: string | Date | null;
   createdAt: string | Date;
+  remarketing: boolean;
 };
 
 type Template = {
@@ -433,9 +434,15 @@ export function OperatorPanel({
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <span className="font-mono text-xs font-semibold text-warning">
                     esperando há {formatWait(waitSeconds)}
-                    <span className="ml-1.5 font-normal text-muted">
-                      · chegou {formatChegada(lead.createdAt)}
-                    </span>
+                    {lead.remarketing ? (
+                      <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-wide text-accent">
+                        Remarketing
+                      </span>
+                    ) : (
+                      <span className="ml-1.5 font-normal text-muted">
+                        · chegou {formatChegada(lead.createdAt)}
+                      </span>
+                    )}
                   </span>
                   {lead.value != null && (
                     <span
@@ -540,9 +547,15 @@ export function OperatorPanel({
                     <td className="py-3.5 pr-2">{paymentTypeBadge(lead.paymentStatus)}</td>
                     <td className="py-3.5 pr-2 font-mono text-xs font-semibold text-warning">
                       {formatWait(waitSeconds)}
-                      <span className="block font-normal text-muted">
-                        chegou {formatChegada(lead.createdAt)}
-                      </span>
+                      {lead.remarketing ? (
+                        <span className="mt-0.5 block w-fit rounded bg-accent/15 px-1.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-wide text-accent">
+                          Remarketing
+                        </span>
+                      ) : (
+                        <span className="block font-normal text-muted">
+                          chegou {formatChegada(lead.createdAt)}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 pr-2">
                       <Badge tone="red">Sem atendimento</Badge>

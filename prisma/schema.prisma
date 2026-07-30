@@ -258,6 +258,10 @@ model Lead {
   value               Decimal?      @db.Decimal(10, 2)
   paymentStatus       PaymentStatus
   serviceStatus       ServiceStatus @default(WAITING)
+  /// Lead reenviado pro atendente como remarketing (redistribuído do histórico
+  /// pelo admin). Na fila do operador, mostra "REMARKETING" no lugar da hora de
+  /// chegada, pra ele saber que é um cliente já contatado antes.
+  remarketing         Boolean       @default(false)
   assignedOperatorId  String?
   assignedOperator    User?         @relation("AssignedLeads", fields: [assignedOperatorId], references: [id])
   assignedAt          DateTime?
