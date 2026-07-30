@@ -89,6 +89,7 @@ export function OperatorPanel({
   templates,
   attendedToday,
   receivedToday,
+  naoAtendidosHoje,
   hasAttendWebhook,
 }: {
   operatorId: string;
@@ -96,6 +97,7 @@ export function OperatorPanel({
   templates: Template[];
   attendedToday: number;
   receivedToday: number;
+  naoAtendidosHoje: number;
   hasAttendWebhook: boolean;
 }) {
   const router = useRouter();
@@ -329,10 +331,12 @@ export function OperatorPanel({
           </p>
         </Card>
         <Card>
-          <p className="text-xs text-secondary">Não atendidos</p>
-          {/* A fila só traz lead ASSIGNED, então o total dela já é o que falta atender. */}
+          <p className="text-xs text-secondary">Não atendidos hoje</p>
+          {/* Só os leads que chegaram hoje e ainda não foram atendidos. Zera ao
+              virar o dia — o backlog de dias anteriores segue na fila abaixo,
+              mas não conta mais aqui. */}
           <p className="mt-2.5 font-mono text-3xl font-semibold text-primary">
-            {initialQueue.length}
+            {naoAtendidosHoje}
           </p>
         </Card>
       </div>

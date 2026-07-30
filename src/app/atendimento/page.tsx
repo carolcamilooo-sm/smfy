@@ -13,6 +13,7 @@ export default async function AtendimentoPage() {
       templates={data.templates}
       attendedToday={data.attendedToday}
       receivedToday={data.receivedToday}
+      naoAtendidosHoje={data.naoAtendidosHoje}
       hasAttendWebhook={data.hasAttendWebhook}
     />
   );

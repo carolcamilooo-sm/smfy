@@ -12,12 +12,6 @@ const PERIODS = [
   { key: "month", label: "Este mês" },
 ];
 
-function formatSeconds(seconds: number | null) {
-  if (seconds == null) return "—";
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}min ${String(seconds % 60).padStart(2, "0")}s`;
-}
-
 export default async function MeuDesempenhoPage({
   searchParams,
 }: {
@@ -70,11 +64,11 @@ export default async function MeuDesempenhoPage({
           <p className="mt-1.5 text-xs text-secondary">{data.conversionRate}% de taxa de conversão</p>
         </Card>
         <Card>
-          <p className="text-xs text-secondary">1ª resposta média</p>
+          <p className="text-xs text-secondary">Não atendidos</p>
           <p className="mt-2.5 font-mono text-3xl font-semibold text-primary">
-            {formatSeconds(data.avgFirstResponseSeconds)}
+            {data.naoAtendidos}
           </p>
-          <p className="mt-1.5 text-xs text-secondary">meta: {data.responseTargetSeconds}s</p>
+          <p className="mt-1.5 text-xs text-secondary">leads recebidos que você não atendeu</p>
         </Card>
         <Card>
           <p className="text-xs text-secondary">Posição no ranking</p>

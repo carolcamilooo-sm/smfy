@@ -118,12 +118,20 @@ export async function getOperatorData(operatorId: string) {
       }),
     ]);
 
+  // Não atendidos de HOJE: da fila (que já é só ASSIGNED), os que entraram a
+  // partir de 00h de hoje. Zera sozinho ao virar o dia — o backlog de dias
+  // anteriores continua na fila pra trabalhar, mas não infla mais este número.
+  const naoAtendidosHoje = queue.filter(
+    (lead) => lead.assignedAt != null && lead.assignedAt >= todayStart
+  ).length;
+
   return {
     status: user.status,
     queue: queue.map((lead) => ({ ...lead, value: lead.value ? Number(lead.value) : null })),
     templates,
     attendedToday,
     receivedToday,
+    naoAtendidosHoje,
     hasAttendWebhook: Boolean(user.attendWebhookUrl),
   };
 }
@@ -261,32 +269,25 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
   return { range, stats, volume, operatorSummaries, leads, producerSummary };
 }
 
-/** Quantos dias o Histórico do atendente enxerga, contando hoje. */
-export const OPERATOR_HISTORY_DAYS = 3;
-
-/** Início do dia mais antigo que o atendente pode ver, em Brasília. */
-function OPERATOR_HISTORY_FLOOR(): Date {
-  return startOfDayString(
-    shiftDateString(brDateString(new Date()), -(OPERATOR_HISTORY_DAYS - 1))
-  );
-}
-
+/**
+ * Histórico do atendente: só o dia ANTERIOR (ontem, em Brasília). O trabalho de
+ * hoje ele acompanha no painel; aqui é só pra revisar o que fez ontem. Nada de
+ * hoje nem de dias mais antigos — o admin continua com o histórico completo em
+ * /dashboard/historico.
+ */
 export async function getOperatorHistory(
   operatorId: string,
-  params: DateRangeParams & { q?: string }
+  params: { q?: string }
 ) {
-  const range = resolveDateRange(params);
   const q = params.q?.trim();
-
-  // Teto rígido de 3 dias: nada mais antigo aparece aqui, nem via ?period= na
-  // URL. Os leads seguem no banco e continuam visíveis pro admin em
-  // /dashboard/historico — o limite é só desta tela.
-  const from = range.from < OPERATOR_HISTORY_FLOOR() ? OPERATOR_HISTORY_FLOOR() : range.from;
+  const ontem = shiftDateString(brDateString(new Date()), -1);
+  const from = startOfDayString(ontem);
+  const to = endOfDayString(ontem);
 
   const where: Prisma.LeadWhereInput = {
     assignedOperatorId: operatorId,
     serviceStatus: "ATTENDED",
-    attendedAt: { gte: from, lte: range.to },
+    attendedAt: { gte: from, lte: to },
   };
 
   if (q) {
@@ -307,7 +308,7 @@ export async function getOperatorHistory(
   });
 
   return {
-    range,
+    dia: ontem,
     leads: leads.map((lead) => ({
       ...lead,
       value: lead.value ? Number(lead.value) : null,
@@ -319,7 +320,6 @@ export async function getOperatorHistory(
   };
 }
 
-const RESPONSE_TARGET_SECONDS = 40;
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function localDayKey(date: Date): number {
@@ -346,6 +346,7 @@ export async function getOperatorPerformance(operatorId: string, params: DateRan
   const [
     attendedLeads,
     previousAttendedCount,
+    naoAtendidos,
     operators,
     operatorAttendedInRange,
     dailyLeads,
@@ -364,6 +365,15 @@ export async function getOperatorPerformance(operatorId: string, params: DateRan
         assignedOperatorId: operatorId,
         serviceStatus: "ATTENDED",
         attendedAt: { gte: previousFrom, lte: previousTo },
+      },
+    }),
+    // Leads que caíram pra ele no período e não foram atendidos — o que
+    // substitui a "1ª resposta" no painel de desempenho.
+    prisma.lead.count({
+      where: {
+        assignedOperatorId: operatorId,
+        assignedAt: { gte: range.from, lte: range.to },
+        serviceStatus: { not: "ATTENDED" },
       },
     }),
     prisma.user.findMany({
@@ -401,14 +411,6 @@ export async function getOperatorPerformance(operatorId: string, params: DateRan
   const attended = attendedLeads.length;
   const convertedSales = attendedLeads.filter((l) => l.paymentStatus === "APPROVED").length;
   const conversionRate = attended > 0 ? Math.round((convertedSales / attended) * 100) : 0;
-
-  const responseTimes = attendedLeads
-    .filter((l) => l.assignedAt && l.attendedAt)
-    .map((l) => (l.attendedAt!.getTime() - l.assignedAt!.getTime()) / 1000);
-  const avgFirstResponseSeconds =
-    responseTimes.length > 0
-      ? Math.round(responseTimes.reduce((sum, s) => sum + s, 0) / responseTimes.length)
-      : null;
 
   const percentChange =
     previousAttendedCount > 0
@@ -465,8 +467,7 @@ export async function getOperatorPerformance(operatorId: string, params: DateRan
     attended,
     convertedSales,
     conversionRate,
-    avgFirstResponseSeconds,
-    responseTargetSeconds: RESPONSE_TARGET_SECONDS,
+    naoAtendidos,
     percentChange,
     rankPosition,
     totalOperators: operators.length,
