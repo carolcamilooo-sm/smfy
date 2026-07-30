@@ -47,14 +47,28 @@ type Lead = {
   createdAt: Date | string;
 };
 
+type OperadorAlvo = { id: string; name: string; online: boolean };
+
 export function HistoricoTable({
   leads,
+  operadores,
   redistribuir,
 }: {
   leads: Lead[];
+  operadores: OperadorAlvo[];
   redistribuir: (formData: FormData) => Promise<void>;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [alvos, setAlvos] = useState<Set<string>>(new Set());
+
+  function toggleAlvo(id: string) {
+    setAlvos((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const allSelected = leads.length > 0 && selected.size === leads.length;
 
@@ -74,17 +88,83 @@ export function HistoricoTable({
   return (
     <div className="space-y-3">
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
-          <span className="text-primary">
-            <span className="font-mono font-semibold">{selected.size}</span> selecionado(s)
-          </span>
+        <div className="space-y-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-primary">
+              <span className="font-mono font-semibold">{selected.size}</span> selecionado(s)
+            </span>
+            <a
+              href={`/api/leads/export?ids=${Array.from(selected).join(",")}`}
+              className="ml-auto"
+            >
+              <Button type="button" variant="secondary">
+                Baixar selecionados
+              </Button>
+            </a>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSelected(new Set());
+                setAlvos(new Set());
+              }}
+            >
+              Limpar seleção
+            </Button>
+          </div>
+
+          {/* Escolha de quem recebe o remarketing. Nenhum marcado = automático
+              (motor: online + trava de acesso). Um marcado = tudo pra ele.
+              Vários = distribui entre eles. */}
+          <div>
+            <p className="mb-1.5 text-xs text-secondary">
+              Redistribuir como <span className="font-semibold text-accent">remarketing</span> para:{" "}
+              {alvos.size === 0
+                ? "automático (online + regras)"
+                : alvos.size === 1
+                  ? "o atendente marcado"
+                  : `${alvos.size} atendentes (dividido entre eles)`}
+            </p>
+            <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+              {operadores.map((op) => {
+                const on = alvos.has(op.id);
+                return (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => toggleAlvo(op.id)}
+                    className={
+                      "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors " +
+                      (on
+                        ? "border-accent bg-accent text-app"
+                        : "border-border bg-surface text-secondary hover:text-primary")
+                    }
+                  >
+                    <span
+                      className={
+                        "h-1.5 w-1.5 rounded-full " +
+                        (op.online ? "bg-success" : "bg-muted")
+                      }
+                    />
+                    {op.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <form
             action={redistribuir}
-            className="ml-auto"
             onSubmit={(e) => {
+              const alvoTxt =
+                alvos.size === 0
+                  ? "automaticamente (online + trava de acesso)"
+                  : alvos.size === 1
+                    ? "para o atendente escolhido"
+                    : `divididos entre os ${alvos.size} atendentes escolhidos`;
               if (
                 !confirm(
-                  `Redistribuir ${selected.size} lead(s) como remarketing? Eles voltam pra fila dos atendentes (respeitando quem está online e a trava de acesso) e aparecem marcados como REMARKETING no lugar da hora de chegada.`
+                  `Redistribuir ${selected.size} lead(s) como remarketing, ${alvoTxt}? Eles voltam pra fila e aparecem marcados como REMARKETING no lugar da hora de chegada.`
                 )
               ) {
                 e.preventDefault();
@@ -92,16 +172,13 @@ export function HistoricoTable({
             }}
           >
             <input type="hidden" name="ids" value={Array.from(selected).join(",")} />
-            <Button type="submit">Redistribuir (remarketing)</Button>
-          </form>
-          <a href={`/api/leads/export?ids=${Array.from(selected).join(",")}`}>
-            <Button type="button" variant="secondary">
-              Baixar selecionados
+            <input type="hidden" name="operatorIds" value={Array.from(alvos).join(",")} />
+            <Button type="submit">
+              {alvos.size === 0
+                ? "Redistribuir (automático)"
+                : `Redistribuir para ${alvos.size} atendente${alvos.size > 1 ? "s" : ""}`}
             </Button>
-          </a>
-          <Button type="button" variant="ghost" onClick={() => setSelected(new Set())}>
-            Limpar seleção
-          </Button>
+          </form>
         </div>
       )}
 

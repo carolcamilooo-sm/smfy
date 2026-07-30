@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { HistoricoTable } from "@/components/historico-table";
 import { redistribuirRemarketing } from "./actions";
+import { getEffectiveStatus } from "@/lib/distribution";
 
 export const dynamic = "force-dynamic";
 
@@ -57,11 +58,26 @@ export default async function HistoricoPage({
       }),
       prisma.user.findMany({
         where: { role: "OPERATOR", approvalStatus: "APPROVED" },
-        select: { id: true, name: true, active: true },
+        select: {
+          id: true,
+          name: true,
+          active: true,
+          status: true,
+          lastActivityAt: true,
+          idleTimeoutMinutes: true,
+        },
         orderBy: { name: "asc" },
       }),
       getLeadsPorAtendente({ q, status: statusParam, producerId, period }),
     ]);
+
+  // Operadores pra escolher no remarketing: só os ativos, com o online agora,
+  // ordenados online primeiro. O admin escolhe um (todos vão pra ele) ou vários
+  // (distribui entre eles); sem escolher, cai no motor automático.
+  const operadoresRemarketing = operators
+    .filter((o) => o.active)
+    .map((o) => ({ id: o.id, name: o.name, online: getEffectiveStatus(o) === "ONLINE" }))
+    .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
 
   const totalNoPeriodo = porAtendente.linhas.reduce((s, l) => s + l.count, 0);
 
@@ -254,7 +270,11 @@ export default async function HistoricoPage({
         </Button>
       </form>
 
-      <HistoricoTable leads={leads} redistribuir={redistribuirRemarketing} />
+      <HistoricoTable
+        leads={leads}
+        operadores={operadoresRemarketing}
+        redistribuir={redistribuirRemarketing}
+      />
 
       <div className="flex items-center justify-between text-xs text-secondary">
         <div>
