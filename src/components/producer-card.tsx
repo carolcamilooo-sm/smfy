@@ -104,15 +104,16 @@ export function ProducerCard({
   const [activeGateway, setActiveGateway] = useState<(typeof GATEWAYS)[number]["key"]>(() =>
     initialGateway(producer)
   );
+  // Qual plataforma está de fato salva. Trocar o chip só muda a seleção na tela;
+  // o "Salvar" é que grava. Assim o admin escolhe com calma e confirma.
+  const [savedGateway, setSavedGateway] = useState<(typeof GATEWAYS)[number]["key"]>(() =>
+    initialGateway(producer)
+  );
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingProducerName, setEditingProducerName] = useState(false);
 
   function selectGateway(key: (typeof GATEWAYS)[number]["key"]) {
     setActiveGateway(key);
-    const formData = new FormData();
-    formData.set("producerId", producer.id);
-    formData.set("gateway", key);
-    setLastWebhookGateway(formData);
   }
   const [accessProductId, setAccessProductId] = useState<string | null>(null);
 
@@ -376,7 +377,7 @@ export function ProducerCard({
           <div className="rounded-lg border border-border bg-app p-4">
             <p className="mb-3 text-xs font-semibold text-secondary">Webhook por gateway</p>
 
-            <div className="mb-3 flex flex-wrap gap-1.5 border-b border-border pb-3">
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-border pb-3">
               {GATEWAYS.map((g) => (
                 <button
                   key={g.key}
@@ -392,6 +393,25 @@ export function ProducerCard({
                   {g.label}
                 </button>
               ))}
+              {/* Só grava quando clicar em Salvar. Enquanto a seleção bate com o
+                  que está salvo, mostra "✓ Salvo"; ao trocar, vira "Salvar". */}
+              {activeGateway === savedGateway ? (
+                <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-success">
+                  ✓ Salvo
+                </span>
+              ) : (
+                <form
+                  action={setLastWebhookGateway}
+                  onSubmit={() => setSavedGateway(activeGateway)}
+                  className="ml-auto"
+                >
+                  <input type="hidden" name="producerId" value={producer.id} />
+                  <input type="hidden" name="gateway" value={activeGateway} />
+                  <SubmitButton variant="secondary" className="py-1.5 text-xs">
+                    Salvar plataforma
+                  </SubmitButton>
+                </form>
+              )}
             </div>
 
             <span className="mb-1 block text-[11px] text-muted">URL do webhook</span>
