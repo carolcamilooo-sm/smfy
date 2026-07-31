@@ -37,7 +37,7 @@ const GATEWAYS = [
   {
     name: "Monetizze",
     description:
-      "Parser completo: eventos de venda (aguardando pagamento, aprovada, completa) viram lead; cancelada vai pro balde de recuperação; reembolso, bloqueio e solicitação de reembolso são ignorados. Cliente, produto e valor lidos automaticamente. Aceita JSON e x-www-form-urlencoded. Assinatura, rastreio, ingresso e abandono de checkout não são processados. A Monetizze não assina os webhooks — quem autentica é o token da própria URL.",
+      "Parser completo: eventos de venda (aguardando pagamento, aprovada, completa) viram lead; abandono de checkout entra como pendente pra recuperação; cancelada vai pro balde de recuperação; reembolso, bloqueio e solicitação de reembolso são ignorados. Cliente, produto e valor lidos automaticamente. Aceita JSON e x-www-form-urlencoded. Assinatura, rastreio e ingresso não são processados. A Monetizze não assina os webhooks — quem autentica é o token da própria URL.",
   },
 ];
 

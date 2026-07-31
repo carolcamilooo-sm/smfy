@@ -17,8 +17,16 @@ const STATUS_BY_EVENT: Record<number, NormalizedPaymentStatus> = {
   3: "DECLINED", // Cancelada
   4: "OTHER", // Devolvida (Reembolso)
   5: "OTHER", // Bloqueada
+  7: "PENDING", // Abandono de Checkout — entra como pendente pra recuperação
   9: "OTHER", // Solicitação de Reembolso
 };
+
+/** Código `rec=` da URL de recuperação — chave estável do carrinho abandonado. */
+function recFromUrl(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const m = v.match(/[?&]rec=([^&]+)/);
+  return m ? m[1] : undefined;
+}
 
 /**
  * Monta objeto aninhado a partir de chaves com colchetes do x-www-form-urlencoded:
@@ -86,7 +94,10 @@ export const monetizzeAdapter: GatewayAdapter = {
     const comprador = obj(p.comprador);
     const produto = obj(p.produto);
 
-    const externalId = String(p.codigo_venda ?? venda.codigo ?? "");
+    // Abandono às vezes não traz codigo_venda ainda; o rec da URL de recuperação
+    // serve de chave estável. Se depois virar venda de verdade, aquele evento
+    // traz o codigo_venda e entra como o registro da compra.
+    const externalId = String(p.codigo_venda ?? venda.codigo ?? recFromUrl(p.url_recuperacao) ?? "");
     if (!externalId) return null;
 
     const phone = comprador.telefone;
