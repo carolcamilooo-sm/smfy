@@ -30,6 +30,7 @@ enum Gateway {
   DISRUPTY
   SMPAY
   PAYT
+  MONETIZZE
 }
 
 enum PaymentStatus {

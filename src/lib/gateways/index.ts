@@ -4,8 +4,9 @@ import { smpayAdapter } from "./smpay";
 import { perfectpayAdapter } from "./perfectpay";
 import { paytAdapter } from "./payt";
 import { disruptyAdapter } from "./disrupty";
+import { monetizzeAdapter } from "./monetizze";
 
-export type GatewayKey = "kiwify" | "perfectpay" | "disrupty" | "smpay" | "payt";
+export type GatewayKey = "kiwify" | "perfectpay" | "disrupty" | "smpay" | "payt" | "monetizze";
 
 export const GATEWAY_ADAPTERS: Record<GatewayKey, GatewayAdapter> = {
   kiwify: kiwifyAdapter,
@@ -13,6 +14,7 @@ export const GATEWAY_ADAPTERS: Record<GatewayKey, GatewayAdapter> = {
   disrupty: disruptyAdapter,
   smpay: smpayAdapter,
   payt: paytAdapter,
+  monetizze: monetizzeAdapter,
 };
 
 export function isGatewayKey(value: string): value is GatewayKey {
@@ -21,13 +23,14 @@ export function isGatewayKey(value: string): value is GatewayKey {
 
 export const GATEWAY_DB_VALUE: Record<
   GatewayKey,
-  "KIWIFY" | "PERFECTPAY" | "DISRUPTY" | "SMPAY" | "PAYT"
+  "KIWIFY" | "PERFECTPAY" | "DISRUPTY" | "SMPAY" | "PAYT" | "MONETIZZE"
 > = {
   kiwify: "KIWIFY",
   perfectpay: "PERFECTPAY",
   disrupty: "DISRUPTY",
   smpay: "SMPAY",
   payt: "PAYT",
+  monetizze: "MONETIZZE",
 };
 
 /** Only gateways with a documented per-webhook secret/token get a per-producer override field. */

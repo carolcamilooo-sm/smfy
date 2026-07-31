@@ -34,6 +34,11 @@ const GATEWAYS = [
     description:
       "Parser completo: status da venda (aguardando pagamento, pago, recusado, cancelado, expirado, reembolso, chargeback), cliente, produto e valor são lidos automaticamente, com pagamento recusado indo pro balde de recuperação. Postbacks de teste e de carrinho abandonado são ignorados. Suporta verificação por integration key, configurável por produtor em Produtores.",
   },
+  {
+    name: "Monetizze",
+    description:
+      "Parser completo: eventos de venda (aguardando pagamento, aprovada, completa) viram lead; cancelada vai pro balde de recuperação; reembolso, bloqueio e solicitação de reembolso são ignorados. Cliente, produto e valor lidos automaticamente. Aceita JSON e x-www-form-urlencoded. Assinatura, rastreio, ingresso e abandono de checkout não são processados. A Monetizze não assina os webhooks — quem autentica é o token da própria URL.",
+  },
 ];
 
 export default async function IntegracoesPage() {
