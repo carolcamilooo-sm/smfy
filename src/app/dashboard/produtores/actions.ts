@@ -166,7 +166,7 @@ export async function updateGatewaySecret(formData: FormData) {
   revalidatePath("/dashboard/produtores");
 }
 
-const GATEWAY_KEYS = ["kiwify", "perfectpay", "disrupty", "smpay", "payt"] as const;
+const GATEWAY_KEYS = ["kiwify", "perfectpay", "disrupty", "smpay", "payt", "monetizze"] as const;
 
 /**
  * Just remembers which webhook tab the admin last looked at for this
