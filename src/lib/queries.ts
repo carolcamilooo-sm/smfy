@@ -43,11 +43,17 @@ export function resolveDateRange(params: DateRangeParams): DateRange {
     const from = `${todayStr.slice(0, 7)}-01`;
     return { from: startOfDayString(from), to: endOfDay(now), bucket: "day", period };
   }
-  if (period === "custom" && params.from && params.to) {
-    const singleDay = params.from === params.to;
+  if (period === "custom" && (params.from || params.to)) {
+    // Aceita intervalo parcial em vez de exigir as duas datas. Preencher só uma
+    // e clicar Aplicar não pode cair silenciosamente em "hoje" (parece que o
+    // filtro não funciona): sem "até", vai da data escolhida até hoje; sem
+    // "de", mostra só o dia do "até".
+    const fromStr = params.from || params.to!;
+    const toStr = params.to || todayStr;
+    const singleDay = fromStr === toStr;
     return {
-      from: startOfDayString(params.from),
-      to: endOfDayString(params.to),
+      from: startOfDayString(fromStr),
+      to: endOfDayString(toStr),
       bucket: singleDay ? "hour" : "day",
       period,
     };
