@@ -133,6 +133,11 @@ export function OperatorPanel({
     if (periodFilter === "all") return true;
     if (!lead.assignedAt) return true;
     const assignedAt = new Date(lead.assignedAt);
+    // Backlog e remarketing (leads de dias anteriores) precisam ser chamados:
+    // furam o filtro de período pra não sumirem quando ele está em "Hoje". Os
+    // filtros de produtor/produto/pagamento continuam valendo — o atendente só
+    // vê o que é do produtor que está atendendo.
+    if (lead.remarketing || brDateString(assignedAt) !== todayStr) return true;
     if (periodFilter === "today") return brDateString(assignedAt) === todayStr;
     if (periodFilter === "7d") return assignedAt >= sevenDaysAgoStart;
     return true;
