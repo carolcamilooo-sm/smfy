@@ -1,9 +1,17 @@
 import { prisma } from "@/lib/db";
 import type { Lead, PaymentStatus, User } from "@/generated/prisma/client";
-import { startOfToday } from "@/lib/date-br";
+import { startOfToday, startOfDayString, shiftDateString, brDateString } from "@/lib/date-br";
 
 /** Padrão de minutos até ficar ocioso, quando o atendente não tem um próprio. */
 export const DEFAULT_IDLE_MINUTES = 10;
+
+/**
+ * Teto de idade do resgate automático: leads em espera mais antigos que isso
+ * não são mais empurrados pra fila de quem fica online — ficam em espera e só
+ * voltam por remarketing manual do admin. Evita o atendente receber lead de
+ * semanas atrás como se tivesse acabado de chegar.
+ */
+export const RESCUE_MAX_AGE_DAYS = 2;
 
 export type EffectiveStatus = "ONLINE" | "IDLE" | "OFFLINE";
 
@@ -456,8 +464,12 @@ export async function assignLead(
  * comes online or sends a heartbeat so leads don't stay stuck forever.
  */
 export async function rescueWaitingLeads(): Promise<void> {
+  // Só resgata leads dentro do teto de idade; os mais antigos ficam em espera.
+  const cutoff = startOfDayString(shiftDateString(brDateString(new Date()), -RESCUE_MAX_AGE_DAYS));
+  const inicioDeHoje = startOfToday();
+
   const waiting = await prisma.lead.findMany({
-    where: { serviceStatus: "WAITING" },
+    where: { serviceStatus: "WAITING", createdAt: { gte: cutoff } },
     orderBy: { createdAt: "asc" },
     take: 20,
   });
@@ -465,6 +477,15 @@ export async function rescueWaitingLeads(): Promise<void> {
   for (const lead of waiting) {
     const operator = await pickOperatorForLead(lead.paymentStatus, lead.productId, lead.producerId);
     if (!operator) break;
-    await assignLead(lead);
+    const assigned = await assignLead(lead);
+    // Lead de um dia anterior entregue agora entra na fila como remarketing: a
+    // tela do atendente mostra "Remarketing" no lugar de "chegou DD/MM", pra não
+    // exibir a data antiga de chegada.
+    if (assigned.serviceStatus === "ASSIGNED" && lead.createdAt < inicioDeHoje) {
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: { remarketing: true },
+      });
+    }
   }
 }
