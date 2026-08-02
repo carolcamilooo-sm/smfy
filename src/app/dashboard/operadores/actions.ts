@@ -30,7 +30,7 @@ export async function approveOperator(formData: FormData) {
   const operatorId = String(formData.get("operatorId"));
 
   await prisma.user.update({
-    where: { id: operatorId },
+    where: { id: operatorId, role: "OPERATOR" },
     data: { approvalStatus: "APPROVED" },
   });
 
@@ -50,7 +50,7 @@ export async function rejectOperator(formData: FormData) {
   const operatorId = String(formData.get("operatorId"));
 
   await prisma.user.update({
-    where: { id: operatorId },
+    where: { id: operatorId, role: "OPERATOR" },
     data: { approvalStatus: "REJECTED" },
   });
 
@@ -76,7 +76,7 @@ export async function removeOperator(formData: FormData) {
     await prisma.user.delete({ where: { id: operatorId, role: "OPERATOR" } });
   } else {
     await prisma.$transaction([
-      prisma.user.update({ where: { id: operatorId }, data: { active: false } }),
+      prisma.user.update({ where: { id: operatorId, role: "OPERATOR" }, data: { active: false } }),
       prisma.distributionRule.updateMany({ where: { operatorId }, data: { active: false } }),
     ]);
   }
@@ -88,7 +88,7 @@ export async function reactivateOperator(formData: FormData) {
   await requireDashboardAccess();
 
   const operatorId = String(formData.get("operatorId"));
-  await prisma.user.update({ where: { id: operatorId }, data: { active: true } });
+  await prisma.user.update({ where: { id: operatorId, role: "OPERATOR" }, data: { active: true } });
 
   revalidatePath("/dashboard/operadores");
 }
@@ -117,7 +117,7 @@ export async function updateDistribution(formData: FormData) {
       create: { operatorId, active },
     }),
     prisma.user.update({
-      where: { id: operatorId },
+      where: { id: operatorId, role: "OPERATOR" },
       data: { active: userActive, priority },
     }),
   ]);
