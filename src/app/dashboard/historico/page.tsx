@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { HistoricoTable } from "@/components/historico-table";
 import { redistribuirRemarketing } from "./actions";
 import { getEffectiveStatus } from "@/lib/distribution";
+import { BR_TIMEZONE } from "@/lib/date-br";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ const PERIOD_OPTIONS = [
   { value: "today", label: "Hoje" },
   { value: "yesterday", label: "Ontem" },
   { value: "month", label: "Este mês" },
+  { value: "custom", label: "Período personalizado" },
 ];
 
 export default async function HistoricoPage({
@@ -31,16 +33,22 @@ export default async function HistoricoPage({
     q?: string;
     status?: string;
     period?: string;
+    from?: string;
+    to?: string;
     producerId?: string;
     operatorId?: string;
     page?: string;
   }>;
 }) {
-  const { q, status, period, producerId, operatorId, page } = await searchParams;
+  const { q, status, period, from, to, producerId, operatorId, page } = await searchParams;
   const statusParam =
     status === "approved" || status === "pending" || status === "declined" || status === "other"
       ? status
       : undefined;
+
+  // Datas personalizadas mandam: preencher De/Até vira intervalo "custom" e
+  // ignora o período do seletor, pra não brigar um com o outro.
+  const effectivePeriod = from || to ? "custom" : period;
 
   const [{ leads, total, page: currentPage, totalPages, range }, producers, operators, porAtendente] =
     await Promise.all([
@@ -49,7 +57,9 @@ export default async function HistoricoPage({
         status: statusParam,
         producerId,
         operatorId,
-        period,
+        period: effectivePeriod,
+        from,
+        to,
         page: page ? Number(page) : 1,
       }),
       prisma.producer.findMany({
@@ -68,7 +78,7 @@ export default async function HistoricoPage({
         },
         orderBy: { name: "asc" },
       }),
-      getLeadsPorAtendente({ q, status: statusParam, producerId, period }),
+      getLeadsPorAtendente({ q, status: statusParam, producerId, period: effectivePeriod, from, to }),
     ]);
 
   // Operadores pra escolher no remarketing: só os ativos, com o online agora,
@@ -82,8 +92,12 @@ export default async function HistoricoPage({
   const totalNoPeriodo = porAtendente.linhas.reduce((s, l) => s + l.count, 0);
 
   // Descreve, em palavras, os filtros que estão valendo — pra o informativo
-  // dizer "de que" é a contagem, e não só um número solto.
-  const periodoLabel = PERIOD_OPTIONS.find((p) => p.value === range.period)?.label ?? range.period;
+  // dizer "de que" é a contagem, e não só um número solto. Em custom, mostra o
+  // intervalo escolhido em vez de um rótulo genérico.
+  const periodoLabel =
+    range.period === "custom"
+      ? `${range.from.toLocaleDateString("pt-BR", { timeZone: BR_TIMEZONE })} – ${range.to.toLocaleDateString("pt-BR", { timeZone: BR_TIMEZONE })}`
+      : (PERIOD_OPTIONS.find((p) => p.value === range.period)?.label ?? range.period);
   const filtrosAtivos: string[] = [];
   if (statusParam) {
     filtrosAtivos.push(STATUS_OPTIONS.find((o) => o.value === statusParam)?.label ?? statusParam);
@@ -106,6 +120,8 @@ export default async function HistoricoPage({
     if (status) params.set("status", status);
     if (producerId) params.set("producerId", producerId);
     if (operatorId) params.set("operatorId", operatorId);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
     params.set("period", range.period);
     params.set("page", String(target));
     return `?${params.toString()}`;
@@ -157,6 +173,26 @@ export default async function HistoricoPage({
             </option>
           ))}
         </select>
+        {/* Intervalo de datas: preenchê-lo tem precedência sobre o período
+            acima (vira "Período personalizado"). Só uma das datas também vale —
+            sem "até" conta até hoje. */}
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            name="from"
+            defaultValue={from ?? ""}
+            aria-label="Data inicial"
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-secondary focus:border-accent focus:outline-none"
+          />
+          <span className="text-xs text-secondary">até</span>
+          <input
+            type="date"
+            name="to"
+            defaultValue={to ?? ""}
+            aria-label="Data final"
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-secondary focus:border-accent focus:outline-none"
+          />
+        </div>
         <select
           name="producerId"
           defaultValue={producerId ?? ""}
@@ -209,7 +245,7 @@ export default async function HistoricoPage({
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-sm font-semibold text-title">Leads por atendente</h2>
           <span className="text-xs text-secondary">
-            {PERIOD_OPTIONS.find((p) => p.value === range.period)?.label ?? range.period} ·{" "}
+            {periodoLabel} ·{" "}
             <span className="font-mono text-primary">{totalNoPeriodo}</span> no total
           </span>
         </div>
@@ -252,6 +288,8 @@ export default async function HistoricoPage({
         <input type="hidden" name="producerId" value={producerId ?? ""} />
         <input type="hidden" name="operatorId" value={operatorId ?? ""} />
         <input type="hidden" name="period" value={range.period} />
+        <input type="hidden" name="from" value={from ?? ""} />
+        <input type="hidden" name="to" value={to ?? ""} />
         <div>
           <label className="mb-1.5 block text-xs text-secondary">
             Quantidade de leads pra baixar (dos que batem com o filtro acima)

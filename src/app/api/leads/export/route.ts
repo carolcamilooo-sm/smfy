@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
             : undefined;
         })(),
         period: params.get("period") ?? undefined,
+        from: params.get("from") ?? undefined,
+        to: params.get("to") ?? undefined,
         producerId: params.get("producerId") ?? undefined,
         operatorId: params.get("operatorId") ?? undefined,
         limit: Math.min(10000, Math.max(1, Number(params.get("limit")) || 500)),
