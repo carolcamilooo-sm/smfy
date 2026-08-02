@@ -12,7 +12,11 @@ function formatDate(date: Date) {
 }
 
 function csvCell(value: string | number | null | undefined) {
-  const str = value === null || value === undefined ? "" : String(value);
+  let str = value === null || value === undefined ? "" : String(value);
+  // Neutraliza CSV/formula injection: como nome/produto do lead vêm de webhook
+  // externo, uma célula começando com = + - @ (ou tab/CR) viraria fórmula ao
+  // abrir no Excel/Sheets. Prefixar com ' força o conteúdo a ser tratado texto.
+  if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
   return `"${str.replace(/"/g, '""')}"`;
 }
 
