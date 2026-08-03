@@ -105,7 +105,25 @@ export async function getOperatorData(operatorId: string) {
       prisma.user.findUniqueOrThrow({ where: { id: operatorId } }),
       prisma.lead.findMany({
         where: { assignedOperatorId: operatorId, serviceStatus: "ASSIGNED" },
-        include: { producer: { select: { name: true } } },
+        // Só os campos que o painel do atendente usa. Sem `select`, isto trazia
+        // a linha inteira — inclusive o rawPayload (JSON cru do webhook) — de
+        // toda a fila a cada carga, deixando a tela lenta no celular. Nenhum
+        // campo pesado é usado aqui.
+        select: {
+          id: true,
+          customerName: true,
+          phone: true,
+          document: true,
+          product: true,
+          producerId: true,
+          value: true,
+          gateway: true,
+          paymentStatus: true,
+          assignedAt: true,
+          createdAt: true,
+          remarketing: true,
+          producer: { select: { name: true } },
+        },
         orderBy: { assignedAt: "asc" },
       }),
       prisma.messageTemplate.findMany({
