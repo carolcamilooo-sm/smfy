@@ -84,17 +84,20 @@ export async function GET(request: NextRequest) {
       lead.product ?? "",
       lead.producer?.name ?? "",
       lead.gateway,
-      lead.value ?? "",
+      // Valor no padrão BR (vírgula decimal), pra o Excel-PT ler como número.
+      lead.value != null ? lead.value.toFixed(2).replace(".", ",") : "",
       STATUS_LABEL[lead.paymentStatus] ?? lead.paymentStatus,
       SERVICE_LABEL[lead.serviceStatus] ?? lead.serviceStatus,
       lead.assignedOperator?.name ?? "",
       lead.usedTemplate?.title ?? "",
     ]
       .map(csvCell)
-      .join(",")
+      .join(";")
   );
 
-  const csv = "﻿" + [header.map(csvCell).join(","), ...rows].join("\r\n");
+  // Separador ";" (não ","): o Excel em português usa ponto e vírgula como
+  // separador de lista. Com vírgula, ele joga tudo numa coluna só.
+  const csv = "﻿" + [header.map(csvCell).join(";"), ...rows].join("\r\n");
   const filename = `leads-${brDateString(new Date())}.csv`;
 
   return new NextResponse(csv, {
