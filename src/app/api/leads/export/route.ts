@@ -20,6 +20,17 @@ function csvCell(value: string | number | null | undefined) {
   return `"${str.replace(/"/g, '""')}"`;
 }
 
+/**
+ * Força o Excel a tratar o valor como TEXTO, via `="valor"`. Sem isso, número
+ * longo como telefone (5511999999999) vira notação científica (5,51999E+12).
+ * O valor é escapado dentro das aspas, então continua sendo só texto — nunca
+ * uma fórmula executável (e o telefone já sai do webhook como dígitos).
+ */
+function csvTextCell(value: string | number | null | undefined) {
+  const str = value === null || value === undefined ? "" : String(value);
+  return `"=""${str.replace(/"/g, '""')}"""`;
+}
+
 const STATUS_LABEL: Record<string, string> = {
   APPROVED: "Aprovado",
   PENDING: "Pendente",
@@ -77,22 +88,21 @@ export async function GET(request: NextRequest) {
 
   const rows = leads.map((lead) =>
     [
-      formatDate(lead.createdAt),
-      lead.customerName,
-      lead.phone,
-      lead.email ?? "",
-      lead.product ?? "",
-      lead.producer?.name ?? "",
-      lead.gateway,
+      csvCell(formatDate(lead.createdAt)),
+      csvCell(lead.customerName),
+      // Telefone como texto: senão o Excel mostra em notação científica.
+      csvTextCell(lead.phone),
+      csvCell(lead.email ?? ""),
+      csvCell(lead.product ?? ""),
+      csvCell(lead.producer?.name ?? ""),
+      csvCell(lead.gateway),
       // Valor no padrão BR (vírgula decimal), pra o Excel-PT ler como número.
-      lead.value != null ? lead.value.toFixed(2).replace(".", ",") : "",
-      STATUS_LABEL[lead.paymentStatus] ?? lead.paymentStatus,
-      SERVICE_LABEL[lead.serviceStatus] ?? lead.serviceStatus,
-      lead.assignedOperator?.name ?? "",
-      lead.usedTemplate?.title ?? "",
-    ]
-      .map(csvCell)
-      .join(";")
+      csvCell(lead.value != null ? lead.value.toFixed(2).replace(".", ",") : ""),
+      csvCell(STATUS_LABEL[lead.paymentStatus] ?? lead.paymentStatus),
+      csvCell(SERVICE_LABEL[lead.serviceStatus] ?? lead.serviceStatus),
+      csvCell(lead.assignedOperator?.name ?? ""),
+      csvCell(lead.usedTemplate?.title ?? ""),
+    ].join(";")
   );
 
   // Separador ";" (não ","): o Excel em português usa ponto e vírgula como
