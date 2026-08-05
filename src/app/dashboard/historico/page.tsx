@@ -292,12 +292,14 @@ export default async function HistoricoPage({
         <input type="hidden" name="to" value={to ?? ""} />
         <div>
           <label className="mb-1.5 block text-xs text-secondary">
-            Quantidade de leads pra baixar (dos que batem com o filtro acima)
+            Quantidade de leads pra baixar (já vem com o total do filtro; máx. 10.000)
           </label>
           <Input
             type="number"
             name="limit"
-            defaultValue={500}
+            // Já vem preenchido com o total do filtro (limitado ao teto de 10 mil),
+            // pra baixar tudo por padrão em vez de cortar em 500 sem avisar.
+            defaultValue={Math.max(1, Math.min(total, 10000))}
             min={1}
             max={10000}
             className="w-40"
