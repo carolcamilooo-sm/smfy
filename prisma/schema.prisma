@@ -61,6 +61,11 @@ model User {
   status         OperatorStatus   @default(OFFLINE)
   active         Boolean          @default(true)
   priority       Boolean          @default(false)
+  // Teto de pagos na fila do atendente: enquanto tiver ESTE tanto (ou mais) de
+  // pago (APPROVED) nao atendido na fila, para de receber leads novos; atendeu
+  // um, recebe outro, mantendo o buffer cheio. null = sem teto (desligado).
+  // Serve pra alimentar o melhor conversor sem entupir (ex: manter 10 na fila).
+  maxPaidQueue      Int?
   notifySound       Boolean       @default(true)
   notifyIdleWarning Boolean       @default(true)
   salesWebhookToken String?       @unique

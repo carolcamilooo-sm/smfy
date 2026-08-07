@@ -51,6 +51,7 @@ export function OperatorRow({
     email: string;
     active: boolean;
     priority: boolean;
+    maxPaidQueue: number | null;
     distributionRule: { active: boolean } | null;
   };
   effectiveStatus: string;
@@ -86,7 +87,7 @@ export function OperatorRow({
           outra ação mudasse esta linha. A key fica no form, e não na linha
           inteira, pra não fechar o painel de produtos que está aberto. */}
       <form
-        key={`${operator.active}|${operator.priority}|${operator.distributionRule?.active}`}
+        key={`${operator.active}|${operator.priority}|${operator.distributionRule?.active}|${operator.maxPaidQueue}`}
         action={updateDistribution}
         className="contents"
       >
@@ -148,6 +149,17 @@ export function OperatorRow({
           />
         </div>
         <div className="border-t border-border py-2">
+          <input
+            type="number"
+            name="maxPaidQueue"
+            defaultValue={operator.maxPaidQueue ?? ""}
+            min={0}
+            placeholder="—"
+            className="w-14 rounded border border-border bg-app px-1.5 py-1 text-xs text-primary focus:border-accent focus:outline-none"
+            title="Máx. de pagos na fila deste atendente. Vazio = sem teto. Ex: 10 mantém 10 pagos na fila; atendeu um, chega outro."
+          />
+        </div>
+        <div className="border-t border-border py-2">
           <SubmitButton variant="secondary">Salvar</SubmitButton>
         </div>
       </form>
@@ -175,7 +187,7 @@ export function OperatorRow({
       </ConfirmForm>
 
       {productsOpen && (
-        <div className="col-span-10 rounded-lg border border-border bg-app p-3">
+        <div className="col-span-11 rounded-lg border border-border bg-app p-3">
           <p className="mb-2 text-xs font-semibold text-secondary">
             Produtos liberados para {operator.name}
           </p>

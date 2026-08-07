@@ -109,6 +109,12 @@ export async function updateDistribution(formData: FormData) {
   const active = formData.get("active") === "on";
   const userActive = formData.get("userActive") === "on";
   const priority = formData.get("priority") === "on";
+  // Teto de pagos na fila: vazio/0 = sem teto (null). Positivo = mantém esse
+  // tanto de pago na fila do atendente.
+  const maxPaidRaw = String(formData.get("maxPaidQueue") ?? "").trim();
+  const maxPaidNum = Math.floor(Number(maxPaidRaw));
+  const maxPaidQueue =
+    maxPaidRaw !== "" && Number.isFinite(maxPaidNum) && maxPaidNum > 0 ? maxPaidNum : null;
 
   await prisma.$transaction([
     prisma.distributionRule.upsert({
@@ -118,7 +124,7 @@ export async function updateDistribution(formData: FormData) {
     }),
     prisma.user.update({
       where: { id: operatorId, role: "OPERATOR" },
-      data: { active: userActive, priority },
+      data: { active: userActive, priority, maxPaidQueue },
     }),
   ]);
 

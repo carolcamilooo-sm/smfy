@@ -359,6 +359,34 @@ export async function pickOperatorForLead(
   );
   if (eligible.length === 0) return null;
 
+  // Teto de pagos na fila: atendente com maxPaidQueue definido para de receber
+  // leads novos (de qualquer categoria) enquanto tiver ESSE tanto — ou mais — de
+  // pago (APPROVED) não atendido (ASSIGNED) na fila. Atendeu um, cai abaixo do
+  // teto e volta a receber, mantendo o buffer cheio. Foca o melhor conversor nos
+  // pagos sem entupir. Só consulta se houver alguém com teto entre os elegíveis.
+  const comTeto = eligible.filter((op) => op.maxPaidQueue != null);
+  if (comTeto.length > 0) {
+    const pagosNaFila = await prisma.lead.groupBy({
+      by: ["assignedOperatorId"],
+      where: {
+        assignedOperatorId: { in: comTeto.map((op) => op.id) },
+        paymentStatus: "APPROVED",
+        serviceStatus: "ASSIGNED",
+      },
+      _count: { _all: true },
+    });
+    const contagem = new Map(
+      pagosNaFila.map((c) => [c.assignedOperatorId as string, c._count._all])
+    );
+    const bloqueados = new Set(
+      comTeto.filter((op) => (contagem.get(op.id) ?? 0) >= op.maxPaidQueue!).map((op) => op.id)
+    );
+    if (bloqueados.size > 0) {
+      eligible = eligible.filter((op) => !bloqueados.has(op.id));
+      if (eligible.length === 0) return null;
+    }
+  }
+
   const todayStart = startOfToday();
 
   // Cap filtering happens before the priority narrowing below: an operator

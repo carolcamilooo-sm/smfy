@@ -291,7 +291,7 @@ export default async function OperadoresPage({
           </p>
         )}
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_auto_auto_auto_auto_auto_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
+          <div className="grid grid-cols-[1.1fr_1.5fr_0.9fr_auto_auto_auto_auto_auto_auto_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
             <div className="text-xs text-secondary">Nome</div>
             <div className="text-xs text-secondary">E-mail</div>
             <div className="text-xs text-secondary">Status</div>
@@ -304,6 +304,12 @@ export default async function OperadoresPage({
             <div className="text-xs text-secondary">Distrib. ativa</div>
             <div className="text-xs text-secondary">Prioridade</div>
             <div className="text-xs text-secondary">Atendente ativo</div>
+            <div
+              className="text-xs text-secondary"
+              title="Máximo de pagos na fila do atendente. Ao atingir esse número, ele para de receber leads novos; atendeu um, chega outro, mantendo o buffer. Vazio = sem teto."
+            >
+              Máx. pagos
+            </div>
             <div />
             <div />
             <div />
@@ -333,7 +339,7 @@ export default async function OperadoresPage({
             ))}
 
             {operators.length === 0 && (
-              <div className="col-span-10 py-4 text-center text-secondary">
+              <div className="col-span-11 py-4 text-center text-secondary">
                 Nenhum operador cadastrado ainda.
               </div>
             )}
