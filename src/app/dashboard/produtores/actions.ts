@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/access";
+import { logActivity } from "@/lib/activity-log";
 
 function generateToken() {
   return randomBytes(16).toString("hex");
@@ -24,6 +25,7 @@ export async function createProducer(formData: FormData) {
     },
   });
 
+  await logActivity("producer.create", `Criou o produtor "${name}"`);
   revalidatePath("/dashboard/produtores");
 }
 
@@ -35,6 +37,7 @@ export async function updateProducer(formData: FormData) {
   if (!name) throw new Error("Informe o nome do produtor.");
 
   await prisma.producer.update({ where: { id }, data: { name } });
+  await logActivity("producer.rename", `Renomeou um produtor para "${name}"`);
   revalidatePath("/dashboard/produtores");
 }
 
@@ -50,6 +53,7 @@ export async function addProduct(formData: FormData) {
   await prisma.product.create({
     data: { producerId, name, sigla: sigla || null, codigo: codigo || null },
   });
+  await logActivity("product.create", `Adicionou o produto "${name}"`);
   revalidatePath("/dashboard/produtores");
 }
 
@@ -61,13 +65,16 @@ export async function updateProduct(formData: FormData) {
   if (!name) throw new Error("Informe o nome do produto.");
 
   await prisma.product.update({ where: { id }, data: { name } });
+  await logActivity("product.rename", `Renomeou um produto para "${name}"`);
   revalidatePath("/dashboard/produtores");
 }
 
 export async function removeProduct(formData: FormData) {
   await requireDashboardAccess();
   const id = String(formData.get("id"));
+  const prod = await prisma.product.findUnique({ where: { id }, select: { name: true } });
   await prisma.product.delete({ where: { id } });
+  await logActivity("product.remove", `Removeu o produto "${prod?.name ?? "removido"}"`);
   revalidatePath("/dashboard/produtores");
 }
 
@@ -76,6 +83,10 @@ export async function toggleProductActive(formData: FormData) {
   const id = String(formData.get("id"));
   const product = await prisma.product.findUniqueOrThrow({ where: { id } });
   await prisma.product.update({ where: { id }, data: { active: !product.active } });
+  await logActivity(
+    "product.toggle",
+    `${product.active ? "Desativou" : "Ativou"} o produto "${product.name}"`
+  );
   revalidatePath("/dashboard/produtores");
 }
 
@@ -126,6 +137,17 @@ export async function updateProductAccess(formData: FormData) {
       },
     });
   }
+
+  const [prod, op] = await Promise.all([
+    prisma.product.findUnique({ where: { id: productId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: operatorId }, select: { name: true } }),
+  ]);
+  await logActivity(
+    "product.access",
+    `Alterou o acesso de ${op?.name ?? "atendente"} ao produto "${prod?.name ?? "?"}" (aprovados: ${
+      allowApproved ? "sim" : "não"
+    }, pendentes: ${allowPending ? "sim" : "não"})`
+  );
   revalidatePath("/dashboard/produtores");
   revalidatePath("/dashboard/operadores");
 }
@@ -134,10 +156,11 @@ export async function regenerateToken(formData: FormData) {
   await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
-  await prisma.producer.update({
+  const p = await prisma.producer.update({
     where: { id: producerId },
     data: { webhookToken: generateToken() },
   });
+  await logActivity("producer.token", `Gerou novo token de webhook do produtor "${p.name}"`);
   revalidatePath("/dashboard/produtores");
 }
 
@@ -159,10 +182,14 @@ export async function updateGatewaySecret(formData: FormData) {
   }
   const secret = String(formData.get("secret") ?? "").trim();
 
-  await prisma.producer.update({
+  const p = await prisma.producer.update({
     where: { id: producerId },
     data: { [field as SecretField]: secret || null },
   });
+  await logActivity(
+    "producer.secret",
+    `${secret ? "Atualizou" : "Limpou"} o segredo de gateway (${field}) do produtor "${p.name}"`
+  );
   revalidatePath("/dashboard/produtores");
 }
 
@@ -172,6 +199,7 @@ const GATEWAY_KEYS = ["kiwify", "perfectpay", "disrupty", "smpay", "payt", "mone
  * Just remembers which webhook tab the admin last looked at for this
  * producer, so it opens on the right one next visit — not user-facing data,
  * so no revalidatePath (would refetch the whole page on every tab click).
+ * Também não entra no log de atividade: é só preferência de tela, não uma ação.
  */
 export async function setLastWebhookGateway(formData: FormData) {
   await requireDashboardAccess();
@@ -196,14 +224,19 @@ export async function removeProducer(formData: FormData) {
   await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
+  const alvo = await prisma.producer.findUnique({ where: { id: producerId }, select: { name: true } });
   const leadCount = await prisma.lead.count({ where: { producerId } });
 
+  let acao: string;
   if (leadCount === 0) {
     await prisma.producer.delete({ where: { id: producerId } });
+    acao = "Removeu";
   } else {
     await prisma.producer.update({ where: { id: producerId }, data: { active: false } });
+    acao = "Arquivou";
   }
 
+  await logActivity("producer.remove", `${acao} o produtor "${alvo?.name ?? "removido"}"`);
   revalidatePath("/dashboard/produtores");
 }
 
@@ -211,6 +244,7 @@ export async function reactivateProducer(formData: FormData) {
   await requireDashboardAccess();
 
   const producerId = String(formData.get("producerId"));
-  await prisma.producer.update({ where: { id: producerId }, data: { active: true } });
+  const p = await prisma.producer.update({ where: { id: producerId }, data: { active: true } });
+  await logActivity("producer.reactivate", `Reativou o produtor "${p.name}"`);
   revalidatePath("/dashboard/produtores");
 }

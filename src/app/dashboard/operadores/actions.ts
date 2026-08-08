@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/access";
+import { logActivity } from "@/lib/activity-log";
 
 /**
  * Ajusta o tempo de ociosidade de um atendente (minutos até ficar ocioso e
@@ -16,11 +17,12 @@ export async function updateIdleTimeout(formData: FormData) {
   const operatorId = String(formData.get("operatorId"));
   const minutos = Math.min(120, Math.max(2, Math.round(Number(formData.get("idleTimeoutMinutes")) || 10)));
 
-  await prisma.user.update({
+  const u = await prisma.user.update({
     where: { id: operatorId, role: "OPERATOR" },
     data: { idleTimeoutMinutes: minutos },
   });
 
+  await logActivity("operator.idle", `Ajustou a ociosidade de ${u.name} para ${minutos}min`);
   revalidatePath("/dashboard/operadores");
 }
 
@@ -29,7 +31,7 @@ export async function approveOperator(formData: FormData) {
 
   const operatorId = String(formData.get("operatorId"));
 
-  await prisma.user.update({
+  const u = await prisma.user.update({
     where: { id: operatorId, role: "OPERATOR" },
     data: { approvalStatus: "APPROVED" },
   });
@@ -41,6 +43,7 @@ export async function approveOperator(formData: FormData) {
     create: { operatorId, active: true },
   });
 
+  await logActivity("operator.approve", `Aprovou o atendente ${u.name}`);
   revalidatePath("/dashboard/operadores");
 }
 
@@ -49,11 +52,12 @@ export async function rejectOperator(formData: FormData) {
 
   const operatorId = String(formData.get("operatorId"));
 
-  await prisma.user.update({
+  const u = await prisma.user.update({
     where: { id: operatorId, role: "OPERATOR" },
     data: { approvalStatus: "REJECTED" },
   });
 
+  await logActivity("operator.reject", `Recusou o atendente ${u.name}`);
   revalidatePath("/dashboard/operadores");
 }
 
@@ -67,20 +71,25 @@ export async function removeOperator(formData: FormData) {
   await requireDashboardAccess();
 
   const operatorId = String(formData.get("operatorId"));
+  const alvo = await prisma.user.findUnique({ where: { id: operatorId }, select: { name: true } });
   const [assignedLeadCount, leadEventCount] = await Promise.all([
     prisma.lead.count({ where: { assignedOperatorId: operatorId } }),
     prisma.leadEvent.count({ where: { operatorId } }),
   ]);
 
+  let acao: string;
   if (assignedLeadCount === 0 && leadEventCount === 0) {
     await prisma.user.delete({ where: { id: operatorId, role: "OPERATOR" } });
+    acao = "Removeu";
   } else {
     await prisma.$transaction([
       prisma.user.update({ where: { id: operatorId, role: "OPERATOR" }, data: { active: false } }),
       prisma.distributionRule.updateMany({ where: { operatorId }, data: { active: false } }),
     ]);
+    acao = "Desativou";
   }
 
+  await logActivity("operator.remove", `${acao} o atendente ${alvo?.name ?? "removido"}`);
   revalidatePath("/dashboard/operadores");
 }
 
@@ -88,8 +97,9 @@ export async function reactivateOperator(formData: FormData) {
   await requireDashboardAccess();
 
   const operatorId = String(formData.get("operatorId"));
-  await prisma.user.update({ where: { id: operatorId, role: "OPERATOR" }, data: { active: true } });
+  const u = await prisma.user.update({ where: { id: operatorId, role: "OPERATOR" }, data: { active: true } });
 
+  await logActivity("operator.reactivate", `Reativou o atendente ${u.name}`);
   revalidatePath("/dashboard/operadores");
 }
 
@@ -116,7 +126,7 @@ export async function updateDistribution(formData: FormData) {
   const maxPaidQueue =
     maxPaidRaw !== "" && Number.isFinite(maxPaidNum) && maxPaidNum > 0 ? maxPaidNum : null;
 
-  await prisma.$transaction([
+  const [, u] = await prisma.$transaction([
     prisma.distributionRule.upsert({
       where: { operatorId },
       update: { active },
@@ -128,6 +138,12 @@ export async function updateDistribution(formData: FormData) {
     }),
   ]);
 
+  await logActivity(
+    "operator.distribution",
+    `Alterou a distribuição de ${u.name} (distribuição: ${active ? "on" : "off"}, ativo: ${
+      userActive ? "sim" : "não"
+    }, prioridade: ${priority ? "sim" : "não"}, máx. pagos: ${maxPaidQueue ?? "—"})`
+  );
   revalidatePath("/dashboard/operadores");
 }
 
@@ -136,6 +152,7 @@ export async function createGroup(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
   await prisma.attendanceGroup.create({ data: { name } });
+  await logActivity("group.create", `Criou o grupo "${name}"`);
   revalidatePath("/dashboard/operadores");
 }
 
@@ -151,7 +168,7 @@ export async function updateGroup(formData: FormData) {
   // duas coisas de uma vez: entra quem foi marcado, sai quem foi desmarcado.
   const memberIds = formData.getAll("member").map(String);
 
-  await prisma.attendanceGroup.update({
+  const g = await prisma.attendanceGroup.update({
     where: { id },
     data: {
       name,
@@ -164,14 +181,20 @@ export async function updateGroup(formData: FormData) {
       members: { set: memberIds.map((memberId) => ({ id: memberId })) },
     },
   });
+  await logActivity(
+    "group.update",
+    `Editou o grupo "${g.name}" (aprovados: ${g.weightApproved}%, membros: ${memberIds.length})`
+  );
   revalidatePath("/dashboard/operadores");
 }
 
 export async function removeGroup(formData: FormData) {
   await requireDashboardAccess();
   const id = String(formData.get("id"));
+  const g = await prisma.attendanceGroup.findUnique({ where: { id }, select: { name: true } });
   // A tabela de ligação some junto (ON DELETE CASCADE), então as contas apenas
   // deixam de participar deste grupo — os outros grupos delas continuam.
   await prisma.attendanceGroup.delete({ where: { id } });
+  await logActivity("group.remove", `Removeu o grupo "${g?.name ?? "removido"}"`);
   revalidatePath("/dashboard/operadores");
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/access";
+import { logActivity } from "@/lib/activity-log";
 import { NOTICE_ID, NOTICE_LIMITE } from "@/lib/global-notice";
 
 export async function saveGlobalNotice(formData: FormData) {
@@ -25,6 +26,8 @@ export async function saveGlobalNotice(formData: FormData) {
       create: { id: NOTICE_ID, content, authorName: session?.user.name ?? null },
     });
   }
+
+  await logActivity("notice", content ? "Publicou/atualizou o aviso global" : "Apagou o aviso global");
 
   // Os dois painéis: o aviso vive na barra lateral, que é layout de ambos.
   revalidatePath("/dashboard", "layout");

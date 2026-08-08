@@ -64,4 +64,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  events: {
+    // Registra o login dos colaboradores no log de atividade (pra acompanhar
+    // presença de time remoto). Só COLLABORATOR; nunca derruba o login.
+    signIn: async ({ user }) => {
+      const u = user as { id?: string; name?: string | null; role?: string };
+      if (u.role !== "COLLABORATOR" || !u.id) return;
+      try {
+        await prisma.activityLog.create({
+          data: {
+            actorId: u.id,
+            actorName: u.name ?? "Colaborador",
+            action: "login",
+            summary: "Entrou no sistema",
+          },
+        });
+      } catch (err) {
+        console.error("[activity-log] falha ao registrar login", err);
+      }
+    },
+  },
 });

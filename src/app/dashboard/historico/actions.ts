@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/access";
+import { logActivity } from "@/lib/activity-log";
 import { assignLead } from "@/lib/distribution";
 
 function parseIds(formData: FormData, field: string): string[] {
@@ -68,5 +69,11 @@ export async function redistribuirRemarketing(formData: FormData) {
     await prisma.lead.updateMany({ where: { id: { in: ids } }, data: { remarketing: true } });
   }
 
+  await logActivity(
+    "remarketing",
+    `Redistribuiu ${leads.length} lead(s) como remarketing${
+      escolhidos.length > 0 ? " (para atendentes escolhidos)" : " (automático)"
+    }`
+  );
   revalidatePath("/dashboard/historico");
 }

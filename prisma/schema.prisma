@@ -358,3 +358,21 @@ model LeadEvent {
   @@index([operatorId, createdAt])
   @@map("lead_events")
 }
+
+/// Registro de atividade dos colaboradores (papel COLLABORATOR) no painel admin:
+/// o que cada um fez e quando, pra o dono acompanhar time remoto. `actorName`
+/// fica gravado (desnormalizado) pra o histórico sobreviver mesmo se a conta for
+/// removida. `action` é a chave da ação (login, operator.approve...) e `summary`
+/// o texto legível.
+model ActivityLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorName String
+  action    String
+  summary   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@map("activity_logs")
+}

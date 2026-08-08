@@ -14,12 +14,16 @@ const NAV_LINKS = [
   { href: "/dashboard/historico", label: "Histórico" },
 ];
 
-export function SidebarNav() {
+// "Atividade" (registro do que os colaboradores fizeram) é só pro dono/admin.
+const ADMIN_ONLY_LINKS = [{ href: "/dashboard/atividade", label: "Atividade" }];
+
+export function SidebarNav({ role }: { role?: string }) {
   const pathname = usePathname();
+  const links = role === "ADMIN" ? [...NAV_LINKS, ...ADMIN_ONLY_LINKS] : NAV_LINKS;
 
   return (
     <nav className="flex flex-col gap-1">
-      {NAV_LINKS.map((link) => {
+      {links.map((link) => {
         const active =
           link.href === "/dashboard"
             ? pathname === link.href

@@ -40,7 +40,7 @@ export default async function DashboardLayout({
           <Logo className="h-12" />
         </div>
 
-        <SidebarNav />
+        <SidebarNav role={session?.user.role} />
 
         <div className="mt-4 flex flex-col gap-3">
           <SidebarClock />

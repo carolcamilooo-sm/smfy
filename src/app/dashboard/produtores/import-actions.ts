@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/access";
+import { logActivity } from "@/lib/activity-log";
 import { lerPlanilhaDisrupty } from "@/lib/import-disrupty";
 
 export type ResumoImportacao = {
@@ -133,6 +134,11 @@ export async function importarPlanilha(
       skipDuplicates: true,
     });
   }
+
+  await logActivity(
+    "import",
+    `Importou planilha da Disrupty: ${novos.length} lead(s) novo(s)${produto ? ` no produto "${produto.name}"` : ""}`
+  );
 
   revalidatePath("/dashboard/produtores");
   revalidatePath("/dashboard/historico");

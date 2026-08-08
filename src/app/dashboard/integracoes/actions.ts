@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/access";
+import { logActivity } from "@/lib/activity-log";
 import { isGatewayKey, GATEWAY_DB_VALUE } from "@/lib/gateways";
 
 function novoToken() {
@@ -28,6 +29,7 @@ export async function gerarWebhookVendas(formData: FormData) {
     create: { gateway: dbGateway, token: novoToken(), active: true },
   });
 
+  await logActivity("sales-webhook.create", `Gerou o webhook de vendas da empresa (${gateway})`);
   revalidatePath("/dashboard/integracoes");
 }
 
@@ -44,6 +46,10 @@ export async function salvarSegredoVendas(formData: FormData) {
     data: { secret: secret || null },
   });
 
+  await logActivity(
+    "sales-webhook.secret",
+    `${secret ? "Atualizou" : "Limpou"} o segredo do webhook de vendas (${gateway})`
+  );
   revalidatePath("/dashboard/integracoes");
 }
 
@@ -57,5 +63,6 @@ export async function removerWebhookVendas(formData: FormData) {
     where: { gateway: GATEWAY_DB_VALUE[gateway] },
   });
 
+  await logActivity("sales-webhook.remove", `Removeu o webhook de vendas da empresa (${gateway})`);
   revalidatePath("/dashboard/integracoes");
 }
