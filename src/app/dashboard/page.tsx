@@ -52,10 +52,8 @@ export default async function DashboardPage({
   searchParams: Promise<{ q?: string; period?: string; from?: string; to?: string }>;
 }) {
   const { q, period, from, to } = await searchParams;
-  const [session, { range, stats, volume, operatorSummaries, leads, producerSummary }] = await Promise.all([
-    auth(),
-    getDashboardData({ period, from, to }),
-  ]);
+  const [session, { range, stats, volume, operatorSummaries, leads, producerSummary, redistribuidos }] =
+    await Promise.all([auth(), getDashboardData({ period, from, to })]);
   const searchResults = q ? await searchLeads(q) : null;
 
   const currentUser = session
@@ -366,7 +364,7 @@ export default async function DashboardPage({
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <p className="text-xs text-secondary">Leads pagos</p>
           <p className="mt-1 font-mono text-3xl font-semibold text-primary">
@@ -407,6 +405,15 @@ export default async function DashboardPage({
             <span className="text-danger">
               Faltam <span className="font-mono font-semibold">{stats.declined.remaining}</span>
             </span>
+          </div>
+        </Card>
+        <Card>
+          <p className="text-xs text-secondary">Redistribuição</p>
+          <p className="mt-1 font-mono text-3xl font-semibold text-primary">
+            {redistribuidos}
+          </p>
+          <div className="mt-3 border-t border-border pt-3 text-xs text-secondary">
+            Leads reenviados {periodLabel(range.period)}
           </div>
         </Card>
       </div>

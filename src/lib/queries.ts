@@ -169,7 +169,7 @@ function summarizeGroup(leads: { serviceStatus: string }[]) {
 export async function getDashboardData(rangeParams: DateRangeParams = {}) {
   const range = resolveDateRange(rangeParams);
 
-  const [leadsInRange, operators, recentLeads, attendedByOperator] =
+  const [leadsInRange, operators, recentLeads, attendedByOperator, redistribuidos] =
     await Promise.all([
       prisma.lead.findMany({
         where: { createdAt: { gte: range.from, lte: range.to } },
@@ -208,6 +208,12 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
           createdAt: { gte: range.from, lte: range.to },
         },
         _count: { _all: true },
+      }),
+      // Leads redistribuídos (remarketing) no período. Conta pela hora da
+      // redistribuição (assignedAt) — que é quando o reenvio acontece —, e não
+      // pela chegada original, que pode ser de dias antes.
+      prisma.lead.count({
+        where: { remarketing: true, assignedAt: { gte: range.from, lte: range.to } },
       }),
     ]);
 
@@ -290,7 +296,7 @@ export async function getDashboardData(rangeParams: DateRangeParams = {}) {
     value: lead.value ? Number(lead.value) : null,
   }));
 
-  return { range, stats, volume, operatorSummaries, leads, producerSummary };
+  return { range, stats, volume, operatorSummaries, leads, producerSummary, redistribuidos };
 }
 
 /**
